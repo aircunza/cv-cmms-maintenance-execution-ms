@@ -1,0 +1,269 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+model MntAsset {
+  assetCode                      String    @id @map("asset_code") @db.NVarChar(80)
+  assetDescription               String?   @map("asset_description") @db.NVarChar(240)
+  assetShortDescription          String?   @map("asset_short_description") @db.NVarChar(200)
+  assetStatus                    String?   @map("asset_status") @db.NVarChar(100)
+  operationalHoursOrigin         String?   @map("operational_hours_origin") @db.NVarChar(100)
+  organizationCode               String    @map("organization_code") @db.NVarChar(255)
+  organizationName               String?   @map("organization_name") @db.NVarChar(255)
+  countryCode                    String?   @map("country_code") @db.NVarChar(10)
+  countryName                    String?   @map("country_name") @db.NVarChar(100)
+  workCenterId                   String?   @map("work_center_id") @db.UniqueIdentifier
+  workCenterCode                 String?   @map("work_center_code") @db.NVarChar(255)
+  workCenterDescription          String?   @map("work_center_description") @db.NVarChar(255)
+  centerCostCode                 Int?      @map("center_cost_code")
+  workAreaCode                   String?   @map("work_area_code") @db.NVarChar(255)
+  workAreaDescription            String?   @map("work_area_description") @db.NVarChar(255)
+  accountingAccountCode          String?   @map("accounting_account_code") @db.NVarChar(100)
+  supervisorCode                 String?   @map("supervisor_code") @db.NVarChar(255)
+  assetDependency                String?   @map("asset_dependency") @db.NVarChar(100)
+  processTypeCode                String?   @map("process_type_code") @db.NVarChar(100)
+  subprocessTypeCode             String?   @map("subprocess_type_code") @db.NVarChar(100)
+  hierarchyCode                  String?   @map("hierarchy_code") @db.NVarChar(100)
+  assetClass                     String?   @map("class") @db.NVarChar(100)
+  enabledMaintenanceProgram      String?   @map("enabled_maintenance_program") @db.Char(1)
+  enabledMaintenanceHoursControl String?   @map("enabled_maintenance_hours_control") @db.Char(1)
+  enabledFinancialKpi            String?   @map("enabled_financial_kpi") @db.Char(1)
+  enabledTechnicalKpi            String?   @map("enabled_technical_kpi") @db.Char(1)
+  woAllowedFlag                  String?   @map("wo_allowed_flag") @db.Char(1)
+  createdBy                      String?   @map("created_by") @db.NVarChar(255)
+  updatedBy                      String?   @map("updated_by") @db.NVarChar(255)
+  updateUp                       DateTime? @map("update_up") @db.DateTimeOffset
+  createdAt                      DateTime  @default(now()) @map("created_at") @db.DateTimeOffset
+  enabledIiot                    String?   @map("enabled_iiot") @db.Char(1)
+  sector                         String?   @db.NVarChar(50)
+  subsector                      String?   @db.NVarChar(50)
+  isActive                       String    @default("Y") @map("is_active") @db.Char(1)
+
+  workRequests MntWorkRequest[]
+
+  @@unique([assetCode, workCenterId], map: "uq_mnt_assets_code")
+  @@index([organizationCode], map: "idx_mnt_assets_org_code")
+  @@map("mnt_assets")
+}
+
+model MntHumanResource {
+  resourceCode       String    @id @map("resource_code") @db.NVarChar(255)
+  resourceName       String    @map("resource_name") @db.NVarChar(255)
+  resourceType       String    @map("resource_type") @db.NVarChar(30)
+  organizationCode   String    @map("organization_code") @db.NVarChar(255)
+  organizationName   String?   @map("organization_name") @db.NVarChar(255)
+  availabilityStatus String    @map("availability_status") @db.NVarChar(255)
+  supervisorId       String?   @map("supervisor_id") @db.NVarChar(255)
+  supervisorName     String?   @map("supervisor_name") @db.NVarChar(70)
+  isActive           String?   @map("is_active") @db.Char(1)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.DateTimeOffset
+  updatedAt          DateTime? @map("updated_at") @db.DateTimeOffset
+  createdBy          String    @map("created_by") @db.UniqueIdentifier
+  createdByName      String    @map("created_by_name") @db.NVarChar(70)
+  updatedBy          String?   @map("updated_by") @db.UniqueIdentifier
+  updatedByName      String?   @map("updated_by_name") @db.NVarChar(70)
+
+  hrUsages MntOperationHumanResourceUsage[]
+
+  @@index([organizationCode], map: "idx_hr_org_code")
+  @@map("mnt_human_resources")
+}
+
+model MntWorkRequest {
+  requestId             BigInt    @id @default(autoincrement()) @map("request_id")
+  assetCode             String    @map("asset_code") @db.NVarChar(80)
+  assetShortDescription String?   @map("asset_short_description") @db.NVarChar(200)
+  issueDescription      String    @map("issue_description") @db.NVarChar(240)
+  statusCode            String    @map("status_code") @db.NVarChar(30)
+  requestedAt           DateTime  @default(now()) @map("requested_at") @db.DateTimeOffset
+  completedAt           DateTime? @map("completed_at") @db.DateTimeOffset
+  releasedAt            DateTime? @map("released_at") @db.DateTimeOffset
+  canceledAt            DateTime? @map("canceled_at") @db.DateTimeOffset
+  workCenterCode        String?   @map("work_center_code") @db.NVarChar(255)
+  workCenterDescription String?   @map("work_center_description") @db.NVarChar(255)
+  centerCostCode        Int?      @map("center_cost_code")
+  workAreaCode          String?   @map("work_area_code") @db.NVarChar(255)
+  workAreaDescription   String?   @map("work_area_description") @db.NVarChar(255)
+  sector                String?   @db.NVarChar(50)
+  subsector             String?   @db.NVarChar(50)
+  organizationCode      String    @map("organization_code") @db.NVarChar(255)
+  organizationName      String?   @map("organization_name") @db.NVarChar(255)
+  createdBy             String    @map("created_by") @db.UniqueIdentifier
+  createdByName         String    @map("created_by_name") @db.NVarChar(70)
+  createdAt             DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
+  updatedAt             DateTime? @map("updated_at") @db.DateTimeOffset
+  updatedBy             String?   @map("updated_by") @db.UniqueIdentifier
+  updatedByName         String?   @map("updated_by_name") @db.NVarChar(70)
+
+  asset      MntAsset       @relation(fields: [assetCode], references: [assetCode], onDelete: NoAction)
+  workOrders MntWorkOrder[]
+
+  @@index([assetCode], map: "idx_wr_asset_code")
+  @@map("mnt_work_request")
+}
+
+model MntWorkOrder {
+  workOrderCode         BigInt    @id @default(autoincrement()) @map("work_order_code")
+  workOrderDescription  String?   @map("work_order_description") @db.NVarChar(240)
+  assetCode             String?   @map("asset_code") @db.NVarChar(80)
+  assetShortDescription String?   @map("asset_short_description") @db.NVarChar(200)
+  workOrderType         String?   @map("work_order_type") @db.NVarChar(30)
+  workOrderSubType      String?   @map("work_order_sub_type") @db.NVarChar(30)
+  workDefinitionCode    String?   @map("work_definition_code") @db.NVarChar(140)
+  workOrderPriority     String?   @map("work_order_priority") @db.NVarChar(30)
+  woStatusCode          String    @map("wo_status_code") @db.NVarChar(30)
+  schedulingMethod      String?   @map("scheduling_method") @db.NVarChar(30)
+  plannedStartDate      DateTime? @map("planned_start_date") @db.DateTimeOffset
+  plannedCompletionDate DateTime? @map("planned_completion_date") @db.DateTimeOffset
+  plannedHours          Float?    @map("planned_hours")
+  actualStartDate       DateTime? @map("actual_start_date") @db.DateTimeOffset
+  actualCompletionDate  DateTime? @map("actual_completion_date") @db.DateTimeOffset
+  actualHours           Float?    @map("actual_hours")
+  releasedDate          DateTime? @map("released_date") @db.DateTimeOffset
+  closedDate            DateTime? @map("closed_date") @db.DateTimeOffset
+  canceledDate          DateTime? @map("canceled_date") @db.DateTimeOffset
+  canceledReason        String?   @map("canceled_reason") @db.NVarChar(240)
+  needByDate            DateTime? @map("need_by_date") @db.DateTimeOffset
+  workRequestId         BigInt?   @map("work_request_id")
+  workCenterCode        String?   @map("work_center_code") @db.NVarChar(255)
+  workCenterDescription String?   @map("work_center_description") @db.NVarChar(255)
+  centerCostCode        Int?      @map("center_cost_code")
+  workAreaCode          String?   @map("work_area_code") @db.NVarChar(255)
+  workAreaDescription   String?   @map("work_area_description") @db.NVarChar(255)
+  sector                String?   @db.NVarChar(50)
+  subsector             String?   @db.NVarChar(50)
+  organizationCode      String    @map("organization_code") @db.NVarChar(255)
+  organizationName      String?   @map("organization_name") @db.NVarChar(255)
+  createdBy             String    @map("created_by") @db.UniqueIdentifier
+  createdByName         String    @map("created_by_name") @db.NVarChar(70)
+  updatedBy             String?   @map("updated_by") @db.UniqueIdentifier
+  updatedByName         String?   @map("updated_by_name") @db.NVarChar(70)
+  oclWorkOrderId        BigInt?   @map("ocl_work_order_id")
+  oclWorkOrderNumber    String?   @map("ocl_work_order_number") @db.NVarChar(120)
+  createdAt             DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
+  updatedAt             DateTime? @map("updated_at") @db.DateTimeOffset
+
+  workRequest  MntWorkRequest?  @relation(fields: [workRequestId], references: [requestId], onDelete: NoAction)
+  woOperations MntWoOperation[]
+
+  @@index([workRequestId], map: "idx_wo_work_request_id")
+  @@index([assetCode], map: "idx_wo_asset_code")
+  @@map("mnt_work_orders")
+}
+
+model MntWoOperation {
+  operationCode         BigInt    @id @default(autoincrement()) @map("operation_code")
+  operationName         String?   @map("operation_name") @db.NVarChar(120)
+  operationDescription  String?   @map("operation_description") @db.NVarChar(240)
+  operationSeqNumber    Int?      @map("operation_seq_number")
+  workOrderCode         BigInt    @map("work_order_code")
+  assetCode             String?   @map("asset_code") @db.NVarChar(80)
+  assetShortDescription String?   @map("asset_short_description") @db.NVarChar(200)
+  unit                  String?   @db.NVarChar(240)
+  subunit               String?   @db.NVarChar(240)
+  maintainableItem      String?   @map("maintainable_item") @db.NVarChar(240)
+  operationCategory     String?   @map("operation_category") @db.NVarChar(100)
+  operationStatus       String    @map("operation_status") @db.NVarChar(30)
+  operationType         String?   @map("operation_type") @db.NVarChar(30)
+  plannedStartDate      DateTime? @map("planned_start_date") @db.DateTimeOffset
+  plannedCompletionDate DateTime? @map("planned_completion_date") @db.DateTimeOffset
+  actualStartDate       DateTime? @map("actual_start_date") @db.DateTimeOffset
+  actualCompletionDate  DateTime? @map("actual_completion_date") @db.DateTimeOffset
+  plannedHours          Float?    @map("planned_hours")
+  actualHours           Float?    @map("actual_hours")
+  oclWorkOrderId        BigInt?   @map("ocl_work_order_id")
+  oclWorkOrderNumber    String?   @map("ocl_work_order_number") @db.NVarChar(120)
+  clientOperationId     String?   @map("client_operation_id") @db.UniqueIdentifier
+  workCenterCode        String?   @map("work_center_code") @db.NVarChar(255)
+  workCenterDescription String?   @map("work_center_description") @db.NVarChar(255)
+  centerCostCode        Int?      @map("center_cost_code")
+  workAreaCode          String?   @map("work_area_code") @db.NVarChar(255)
+  workAreaDescription   String?   @map("work_area_description") @db.NVarChar(255)
+  sector                String?   @db.NVarChar(50)
+  subsector             String?   @db.NVarChar(50)
+  organizationCode      String    @map("organization_code") @db.NVarChar(255)
+  organizationName      String?   @map("organization_name") @db.NVarChar(255)
+  createdBy             String    @map("created_by") @db.UniqueIdentifier
+  createdByName         String    @map("created_by_name") @db.NVarChar(70)
+  updatedBy             String?   @map("updated_by") @db.UniqueIdentifier
+  updatedByName         String?   @map("updated_by_name") @db.NVarChar(70)
+  reviewedBy            String?   @map("reviewed_by") @db.UniqueIdentifier
+  reviewedByName        String?   @map("reviewed_by_name") @db.NVarChar(70)
+  createdAt             DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
+  updatedAt             DateTime? @map("updated_at") @db.DateTimeOffset
+  reviewedAt            DateTime? @map("reviewed_at") @db.DateTimeOffset
+
+  workOrder      MntWorkOrder                     @relation(fields: [workOrderCode], references: [workOrderCode], onDelete: NoAction)
+  materialUsages MntOperationMaterialUsage[]
+  hrUsages       MntOperationHumanResourceUsage[]
+
+  @@unique([clientOperationId], map: "uq_wo_op_client_op_id")
+  @@index([workOrderCode], map: "idx_wo_op_work_order_code")
+  @@index([assetCode], map: "idx_wo_op_asset_code")
+  @@map("mnt_wo_operations")
+}
+
+model MntOperationMaterialUsage {
+  id                       BigInt    @id @default(autoincrement())
+  operationCode            BigInt    @map("operation_code")
+  organizationCode         String    @map("organization_code") @db.NVarChar(255)
+  materialCode             String    @map("material_code") @db.NVarChar(255)
+  materialName             String?   @map("material_name") @db.NVarChar(255)
+  quantity                 Float?
+  unitCost                 Decimal?  @map("unit_cost") @db.Decimal(18, 2)
+  totalCost                Decimal?  @map("total_cost") @db.Decimal(18, 2)
+  supplyType               String?   @default("1") @map("supply_type") @db.Char(1)
+  materialSequenceNumber   Int?      @map("material_sequence_number")
+  transactedInOracle       String?   @default("N") @map("transacted_in_oracle") @db.Char(1)
+  oclWoOperationMaterialId BigInt?   @map("ocl_wo_operation_material_id")
+  syncedToOracleAt         DateTime? @map("synced_to_oracle_at") @db.DateTimeOffset
+  createdBy                String    @map("created_by") @db.UniqueIdentifier
+  createdByName            String    @map("created_by_name") @db.NVarChar(70)
+  updatedBy                String?   @map("updated_by") @db.UniqueIdentifier
+  updatedByName            String?   @map("updated_by_name") @db.NVarChar(70)
+  createdAt                DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
+  updatedAt                DateTime? @map("updated_at") @db.DateTimeOffset
+
+  operation MntWoOperation @relation(fields: [operationCode], references: [operationCode], onDelete: NoAction)
+
+  @@index([operationCode], map: "idx_op_mat_operation_code")
+  @@map("mnt_operation_material_usages")
+}
+
+model MntOperationHumanResourceUsage {
+  id                       BigInt    @id @default(autoincrement())
+  operationCode            BigInt    @map("operation_code")
+  organizationCode         String    @map("organization_code") @db.NVarChar(255)
+  resourceCode             String    @map("resource_code") @db.NVarChar(255)
+  plannedHours             Float?    @map("planned_hours")
+  actualHours              Float?    @map("actual_hours")
+  hourlyCost               Decimal?  @map("hourly_cost") @db.Decimal(18, 2)
+  principalFlag            String?   @default("N") @map("principal_flag") @db.Char(1)
+  resourceSequenceNumber   Int?      @map("resource_sequence_number")
+  plannedStartDate         DateTime? @map("planned_start_date") @db.DateTimeOffset
+  plannedCompletionDate    DateTime? @map("planned_completion_date") @db.DateTimeOffset
+  usageRate                Decimal?  @map("usage_rate") @db.Decimal(18, 2)
+  transactedInOracle       String?   @default("N") @map("transacted_in_oracle") @db.Char(1)
+  oclWoOperationResourceId BigInt?   @map("ocl_wo_operation_resource_id")
+  syncedToOracleAt         DateTime? @map("synced_to_oracle_at") @db.DateTimeOffset
+  createdBy                String    @map("created_by") @db.UniqueIdentifier
+  createdByName            String    @map("created_by_name") @db.NVarChar(70)
+  updatedBy                String?   @map("updated_by") @db.UniqueIdentifier
+  updatedByName            String?   @map("updated_by_name") @db.NVarChar(70)
+  createdAt                DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
+  updatedAt                DateTime? @map("updated_at") @db.DateTimeOffset
+
+  operation     MntWoOperation   @relation(fields: [operationCode], references: [operationCode], onDelete: NoAction)
+  humanResource MntHumanResource @relation(fields: [resourceCode], references: [resourceCode], onDelete: NoAction)
+
+  @@unique([operationCode, resourceCode, resourceSequenceNumber], map: "uq_op_hr_resource_sequence")
+  @@index([operationCode], map: "idx_op_hr_operation_code")
+  @@index([resourceCode], map: "idx_op_hr_resource_code")
+  @@map("mnt_operation_human_resource_usages")
+}

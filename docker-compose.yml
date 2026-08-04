@@ -1,0 +1,15 @@
+services:
+  exe_maintenance_db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: exe_maintenance_db
+    restart: on-failure #unless-stopped
+    ports:
+      - "1435:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+    volumes:
+      - exe_maintenance_db_data:/var/opt/mssql
+
+volumes:
+  exe_maintenance_db_data:
