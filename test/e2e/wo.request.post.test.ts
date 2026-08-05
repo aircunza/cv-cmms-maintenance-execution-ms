@@ -11,12 +11,13 @@ describe("WO Request POST (e2e, NATS)", () => {
   let context: WorkRequestE2eContext;
 
   beforeAll(async () => {
-    await teardownWorkRequestE2eContext(context);
     context = await setupWorkRequestE2eContext();
   });
 
   afterAll(async () => {
-    //await teardownWorkRequestE2eContext(context);
+    if (context) {
+      await teardownWorkRequestE2eContext(context);
+    }
   });
 
   it("creates a work request successfully and returns requestId", async () => {
