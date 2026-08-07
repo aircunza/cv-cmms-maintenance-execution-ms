@@ -12,7 +12,7 @@ export class OperationHumanResourcesController {
   constructor(private readonly operationHumanResourcesService: OperationHumanResourcesService) {}
 
   @MessagePattern('operation.hr.create')
-  create(@Payload() dto: CreateOperationHrDto & { actorId: string; actorName: string }) {
+  create(@Payload() dto: CreateOperationHrDto & { actorId: string; actorName: string; operationCode: number }) {
     return this.operationHumanResourcesService.create(dto);
   }
 

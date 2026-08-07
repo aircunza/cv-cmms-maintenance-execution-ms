@@ -12,7 +12,7 @@ export class OperationMaterialsController {
   constructor(private readonly operationMaterialsService: OperationMaterialsService) {}
 
   @MessagePattern('operation.material.create')
-  create(@Payload() dto: CreateOperationMaterialDto & { actorId: string; actorName: string }) {
+  create(@Payload() dto: CreateOperationMaterialDto & { actorId: string; actorName: string; operationCode: number }) {
     return this.operationMaterialsService.create(dto);
   }
 

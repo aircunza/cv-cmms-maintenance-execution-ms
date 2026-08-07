@@ -1,9 +1,6 @@
-import { IsString, IsOptional, IsNotEmpty, MaxLength, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty, MaxLength, IsNumber, Min } from 'class-validator';
 
 export class CreateOperationMaterialDto {
-  @IsNotEmpty()
-  operationCode: number;
-
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
@@ -14,18 +11,21 @@ export class CreateOperationMaterialDto {
   @MaxLength(255)
   materialCode: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   @MaxLength(255)
   materialName?: string;
 
-  @IsOptional()
-  quantity?: number;
+  @IsNumber()
+  @Min(0.0001)
+  quantity: number;
 
   @IsOptional()
+  @IsNumber()
   unitCost?: number;
 
   @IsOptional()
+  @IsNumber()
   totalCost?: number;
 
   @IsString()
@@ -33,6 +33,7 @@ export class CreateOperationMaterialDto {
   @MaxLength(1)
   supplyType?: string;
 
-  @IsOptional()
-  materialSequenceNumber?: number;
+  @IsNumber()
+  @Min(1)
+  materialSequenceNumber: number;
 }

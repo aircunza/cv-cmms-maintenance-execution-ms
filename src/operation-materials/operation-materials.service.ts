@@ -14,7 +14,7 @@ export class OperationMaterialsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(
-    dto: CreateOperationMaterialDto & { actorId: string; actorName: string },
+    dto: CreateOperationMaterialDto & { actorId: string; actorName: string; operationCode: number },
   ) {
     try {
       const operation = await this.prisma.mntWoOperation.findFirst({
@@ -25,20 +25,18 @@ export class OperationMaterialsService {
         throw new RpcException({ status: 404, message: "Operation not found" });
       }
 
-      if (dto.materialSequenceNumber) {
-        const existing = await this.prisma.mntOperationMaterialUsage.findFirst({
-          where: {
-            operationCode: BigInt(dto.operationCode),
-            materialSequenceNumber: dto.materialSequenceNumber,
-          },
-        });
+      const existing = await this.prisma.mntOperationMaterialUsage.findFirst({
+        where: {
+          operationCode: BigInt(dto.operationCode),
+          materialSequenceNumber: dto.materialSequenceNumber,
+        },
+      });
 
-        if (existing) {
-          throw new RpcException({
-            status: 400,
-            message: `Material sequence number ${dto.materialSequenceNumber} already exists for this operation`,
-          });
-        }
+      if (existing) {
+        throw new RpcException({
+          status: 400,
+          message: `Material sequence number ${dto.materialSequenceNumber} already exists for this operation`,
+        });
       }
 
       const quantity = dto.quantity ?? 0;

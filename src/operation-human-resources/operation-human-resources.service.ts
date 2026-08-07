@@ -9,7 +9,7 @@ export class OperationHumanResourcesService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateOperationHrDto & { actorId: string; actorName: string }) {
+  async create(dto: CreateOperationHrDto & { actorId: string; actorName: string; operationCode: number }) {
     try {
       const operation = await this.prisma.mntWoOperation.findFirst({
         where: { operationCode: BigInt(dto.operationCode) },
@@ -19,21 +19,19 @@ export class OperationHumanResourcesService {
         throw new RpcException({ status: 404, message: 'Operation not found' });
       }
 
-      if (dto.resourceSequenceNumber) {
-        const existing = await this.prisma.mntOperationHumanResourceUsage.findFirst({
-          where: {
-            operationCode: BigInt(dto.operationCode),
-            resourceCode: dto.resourceCode,
-            resourceSequenceNumber: dto.resourceSequenceNumber,
-          },
-        });
+      const existing = await this.prisma.mntOperationHumanResourceUsage.findFirst({
+        where: {
+          operationCode: BigInt(dto.operationCode),
+          resourceCode: dto.resourceCode,
+          resourceSequenceNumber: dto.resourceSequenceNumber,
+        },
+      });
 
-        if (existing) {
-          throw new RpcException({
-            status: 400,
-            message: `Resource sequence number ${dto.resourceSequenceNumber} already exists for this resource in this operation`,
-          });
-        }
+      if (existing) {
+        throw new RpcException({
+          status: 400,
+          message: `Resource sequence number ${dto.resourceSequenceNumber} already exists for this resource in this operation`,
+        });
       }
 
       const hrUsage = await this.prisma.mntOperationHumanResourceUsage.create({
@@ -48,7 +46,6 @@ export class OperationHumanResourcesService {
           resourceSequenceNumber: dto.resourceSequenceNumber,
           plannedStartDate: dto.plannedStartDate,
           plannedCompletionDate: dto.plannedCompletionDate,
-          usageRate: dto.usageRate,
           createdBy: dto.actorId,
           createdByName: dto.actorName,
         },
@@ -95,7 +92,6 @@ export class OperationHumanResourcesService {
           ...(dto.principalFlag !== undefined ? { principalFlag: dto.principalFlag } : {}),
           ...(dto.plannedStartDate !== undefined ? { plannedStartDate: dto.plannedStartDate } : {}),
           ...(dto.plannedCompletionDate !== undefined ? { plannedCompletionDate: dto.plannedCompletionDate } : {}),
-          ...(dto.usageRate !== undefined ? { usageRate: dto.usageRate } : {}),
           updatedBy: dto.actorId,
           updatedByName: dto.actorName,
           updatedAt: new Date(),

@@ -1,29 +1,75 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { PrismaService } from 'src/prisma.service';
-import { CreateWorkOrderDto, UpdateWorkOrderDto, FindAllWorkOrderDto } from './dto';
-import { WO_STATUS, isValidWoTransition, OP_STATUS } from 'src/common/enums';
+import { CreateWorkOrderMessageDto, UpdateWorkOrderDto, FindAllWorkOrderDto, isValidTypeSubtypeCombination } from './dto';
+import { WO_STATUS, isValidWoTransition, OP_STATUS, isOperationStatusCompatible } from 'src/common/enums';
+import { WorkOrderSubTypePolicy, OracleWorkOrderPolicy } from './policies';
+
+const VALID_OP_STATUSES = Object.values(OP_STATUS);
+
+function toTitleCase(str: string): string {
+  return str
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function isValidUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+function isValidIsoDate(value: string): boolean {
+  const date = new Date(value);
+  return !isNaN(date.getTime());
+}
 
 @Injectable()
 export class WorkOrdersService {
   private readonly logger = new Logger(WorkOrdersService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly subtypePolicy: WorkOrderSubTypePolicy,
+    private readonly oraclePolicy: OracleWorkOrderPolicy,
+  ) {}
 
-  async create(dto: CreateWorkOrderDto & { actorId: string; actorName: string }) {
+  async create(dto: CreateWorkOrderMessageDto) {
     try {
-      if (dto.assetCode) {
-        const asset = await this.prisma.mntAsset.findFirst({
-          where: { assetCode: dto.assetCode, isActive: 'Y' },
+      if (!isValidTypeSubtypeCombination(dto.workOrderType, dto.workOrderSubType)) {
+        throw new RpcException({
+          status: 400,
+          message: `Invalid combination of workOrderType "${dto.workOrderType}" and workOrderSubType "${dto.workOrderSubType}"`,
         });
+      }
 
-        if (!asset) {
-          throw new RpcException({ status: 404, message: 'Asset not found or inactive' });
-        }
+      const oracleCheck = this.oraclePolicy.validate(dto.userPermissions, dto.userRoles);
+      if (dto.enableOracleWorkOrder === 'Y' && !oracleCheck.valid) {
+        throw new RpcException({
+          status: 403,
+          message: oracleCheck.error,
+        });
+      }
 
-        if (!dto.assetShortDescription) {
-          dto.assetShortDescription = asset.assetShortDescription ?? undefined;
-        }
+      if (!this.subtypePolicy.canCreateSubType(dto.userRoles, dto.workOrderSubType)) {
+        throw new RpcException({
+          status: 403,
+          message: 'SUBTYPE_NOT_ALLOWED_FOR_ROLE',
+        });
+      }
+
+      const asset = await this.prisma.mntAsset.findFirst({
+        where: { assetCode: dto.assetCode, isActive: 'Y' },
+      });
+
+      if (!asset) {
+        throw new RpcException({ status: 404, message: 'Asset not found or inactive' });
+      }
+
+      if (asset.organizationCode !== dto.organizationCode) {
+        throw new RpcException({
+          status: 403,
+          message: 'ORGANIZATION_MISMATCH',
+        });
       }
 
       if (dto.workRequestId) {
@@ -35,54 +81,459 @@ export class WorkOrdersService {
         }
       }
 
-      const workOrder = await this.prisma.mntWorkOrder.create({
-        data: {
-          workOrderDescription: dto.workOrderDescription,
-          assetCode: dto.assetCode,
-          assetShortDescription: dto.assetShortDescription,
-          workOrderType: dto.workOrderType,
-          workOrderSubType: dto.workOrderSubType,
-          workDefinitionCode: dto.workDefinitionCode,
-          workOrderPriority: dto.workOrderPriority,
-          woStatusCode: dto.woStatusCode ?? WO_STATUS.UNRELEASED,
-          schedulingMethod: dto.schedulingMethod,
-          plannedStartDate: dto.plannedStartDate,
-          plannedCompletionDate: dto.plannedCompletionDate,
-          plannedHours: dto.plannedHours,
-          needByDate: dto.needByDate,
-          workRequestId: dto.workRequestId ? BigInt(dto.workRequestId) : null,
-          workCenterCode: dto.workCenterCode,
-          workCenterDescription: dto.workCenterDescription,
-          centerCostCode: dto.centerCostCode,
-          workAreaCode: dto.workAreaCode,
-          workAreaDescription: dto.workAreaDescription,
-          sector: dto.sector,
-          subsector: dto.subsector,
-          organizationCode: dto.organizationCode,
-          organizationName: dto.organizationName,
-          createdBy: dto.actorId,
-          createdByName: dto.actorName,
+      let operations = dto.operations;
+
+      if (!operations || operations.length === 0) {
+        const now = new Date();
+        const oneHourLater = new Date(now.getTime() + 3600000);
+        operations = [
+          {
+            operationName: 'DEFAULT_OPERATION',
+            operationDescription: 'Auto-generated default operation',
+            operationSeqNumber: 1,
+            createdBy: dto.actorId,
+            operationStatus: 'UNRELEASED',
+            operationType: 'Internal',
+            operationSubType: dto.workOrderSubType,
+            actualStartDate: now.toISOString(),
+            actualCompletionDate: oneHourLater.toISOString(),
+            workOrderOperationResource: [
+              {
+                resourceCode: 'DEFAULT_RESOURCE',
+                resourceSequenceNumber: 0,
+                plannedHours: 1,
+                actualHours: 1,
+                principalFlag: 'N',
+              },
+            ],
+          },
+        ];
+      }
+
+      for (const op of operations) {
+        if (op.operationSubType !== dto.workOrderSubType) {
+          throw new RpcException({
+            status: 400,
+            message: `Operation "${op.operationName}" has operationSubType "${op.operationSubType}" that does not match workOrderSubType "${dto.workOrderSubType}"`,
+          });
+        }
+
+        if (!isValidIsoDate(op.actualStartDate) || !isValidIsoDate(op.actualCompletionDate)) {
+          throw new RpcException({
+            status: 400,
+            message: `Operation "${op.operationName}" has invalid ISO 8601 date fields`,
+          });
+        }
+
+        const startDate = new Date(op.actualStartDate);
+        const completionDate = new Date(op.actualCompletionDate);
+        if (startDate >= completionDate) {
+          throw new RpcException({
+            status: 400,
+            message: `Operation "${op.operationName}" actualStartDate must be before actualCompletionDate`,
+          });
+        }
+
+        if (op.operationName.length < 2 || op.operationName.length > 120) {
+          throw new RpcException({
+            status: 400,
+            message: `Operation "${op.operationName}" name must be between 2 and 120 characters`,
+          });
+        }
+
+        if (op.operationDescription.length > 240) {
+          throw new RpcException({
+            status: 400,
+            message: `Operation "${op.operationName}" description exceeds 240 characters`,
+          });
+        }
+
+        if (!isValidUuid(op.createdBy)) {
+          throw new RpcException({
+            status: 400,
+            message: `Operation "${op.operationName}" has invalid createdBy UUID`,
+          });
+        }
+
+        if (op.operationType !== 'Internal' && op.operationType !== 'Supplier') {
+          throw new RpcException({
+            status: 400,
+            message: `Operation "${op.operationName}" operationType must be "Internal" or "Supplier"`,
+          });
+        }
+
+        if (!VALID_OP_STATUSES.includes(op.operationStatus as any)) {
+          throw new RpcException({
+            status: 400,
+            message: `Operation "${op.operationName}" has invalid operationStatus "${op.operationStatus}"`,
+          });
+        }
+
+        if (!op.workOrderOperationResource || op.workOrderOperationResource.length === 0) {
+          throw new RpcException({
+            status: 400,
+            message: `Operation "${op.operationName}" must have at least one resource`,
+          });
+        }
+
+        for (const res of op.workOrderOperationResource) {
+          if (res.plannedHours <= 0) {
+            throw new RpcException({
+              status: 400,
+              message: `Operation "${op.operationName}" resource "${res.resourceCode}" plannedHours must be greater than 0`,
+            });
+          }
+          if (res.actualHours <= 0) {
+            throw new RpcException({
+              status: 400,
+              message: `Operation "${op.operationName}" resource "${res.resourceCode}" actualHours must be greater than 0`,
+            });
+          }
+          if (res.resourceSequenceNumber < 0 || !Number.isInteger(res.resourceSequenceNumber)) {
+            throw new RpcException({
+              status: 400,
+              message: `Operation "${op.operationName}" resource "${res.resourceCode}" resourceSequenceNumber must be a non-negative integer`,
+            });
+          }
+        }
+      }
+
+      const seqNumbers = operations.map((op) => op.operationSeqNumber);
+      const uniqueSeqs = new Set(seqNumbers);
+      if (uniqueSeqs.size !== seqNumbers.length) {
+        throw new RpcException({
+          status: 400,
+          message: 'Duplicate operationSeqNumber found. Each operation must have a unique sequence number',
+        });
+      }
+
+      const sortedOps = [...operations].sort((a, b) => a.operationSeqNumber - b.operationSeqNumber);
+      for (let i = 1; i < sortedOps.length; i++) {
+        const prevStart = new Date(sortedOps[i - 1].actualStartDate);
+        const currStart = new Date(sortedOps[i].actualStartDate);
+        if (currStart < prevStart) {
+          throw new RpcException({
+            status: 400,
+            message: `Operation with seqNumber ${sortedOps[i].operationSeqNumber} starts before operation with seqNumber ${sortedOps[i - 1].operationSeqNumber}`,
+          });
+        }
+      }
+
+      for (const op of operations) {
+        if (!isOperationStatusCompatible(dto.woStatusCode, op.operationStatus)) {
+          throw new RpcException({
+            status: 400,
+            message: `Operation "${op.operationName}" status "${op.operationStatus}" is not compatible with work order status "${dto.woStatusCode}"`,
+          });
+        }
+      }
+
+      const processedOperations = operations.map((op) => {
+        const groupedBySeq: Record<number, number[]> = {};
+        for (const res of op.workOrderOperationResource) {
+          if (!groupedBySeq[res.resourceSequenceNumber]) {
+            groupedBySeq[res.resourceSequenceNumber] = [];
+          }
+          groupedBySeq[res.resourceSequenceNumber].push(res.actualHours);
+        }
+
+        let calculatedActualHours = 0;
+        for (const seq of Object.keys(groupedBySeq)) {
+          const hours = groupedBySeq[Number(seq)];
+          calculatedActualHours += Math.max(...hours);
+        }
+
+        const startDate = new Date(op.actualStartDate);
+        const calculatedCompletionDate = new Date(startDate.getTime() + calculatedActualHours * 3600000);
+
+        return {
+          ...op,
+          calculatedActualHours,
+          calculatedCompletionDate,
+        };
+      });
+
+      let woActualHours = 0;
+      let totalManHours = 0;
+      let totalSupplierHours = 0;
+      let woActualStartDate: Date | null = null;
+      let woActualCompletionDate: Date | null = null;
+
+      for (const op of processedOperations) {
+        woActualHours += op.calculatedActualHours;
+
+        for (const res of op.workOrderOperationResource) {
+          if (op.operationType === 'Internal') {
+            totalManHours += res.actualHours;
+          } else {
+            totalSupplierHours += res.actualHours;
+          }
+        }
+
+        const opStart = new Date(op.actualStartDate);
+        const opCompletion = op.calculatedCompletionDate;
+
+        if (!woActualStartDate || opStart < woActualStartDate) {
+          woActualStartDate = opStart;
+        }
+        if (!woActualCompletionDate || opCompletion > woActualCompletionDate) {
+          woActualCompletionDate = opCompletion;
+        }
+      }
+
+      const woStatusLabel = toTitleCase(dto.woStatusCode);
+
+      const workOrder = await this.prisma.$transaction(async (tx) => {
+        const wo = await tx.mntWorkOrder.create({
+          data: {
+            workOrderDescription: dto.workOrderDescription,
+            assetCode: dto.assetCode,
+            assetShortDescription: asset.assetShortDescription ?? undefined,
+            workOrderType: dto.workOrderType,
+            workOrderSubType: dto.workOrderSubType,
+            workDefinitionCode: dto.workDefinitionCode,
+            workOrderPriority: dto.workOrderPriority,
+            woStatusCode: dto.woStatusCode,
+            schedulingMethod: dto.schedulingMethod,
+            plannedStartDate: dto.plannedStartDate,
+            plannedCompletionDate: dto.plannedCompletionDate,
+            needByDate: dto.needByDate,
+            workRequestId: dto.workRequestId ? BigInt(dto.workRequestId) : null,
+            workCenterCode: asset.workCenterCode ?? undefined,
+            workCenterDescription: asset.workCenterDescription ?? undefined,
+            centerCostCode: asset.centerCostCode ?? undefined,
+            workAreaCode: asset.workAreaCode ?? undefined,
+            workAreaDescription: asset.workAreaDescription ?? undefined,
+            sector: asset.sector ?? undefined,
+            subsector: asset.subsector ?? undefined,
+            organizationCode: asset.organizationCode,
+            organizationName: asset.organizationName ?? undefined,
+            createdBy: dto.actorId,
+            createdByName: dto.actorName,
+            enableOracleWorkOrder: dto.enableOracleWorkOrder,
+            actualHours: woActualHours,
+            totalManHours,
+            totalSupplierHours,
+            actualStartDate: woActualStartDate,
+            actualCompletionDate: woActualCompletionDate,
+          },
+        });
+
+        for (const op of processedOperations) {
+          const createdOp = await tx.mntWoOperation.create({
+            data: {
+              operationName: op.operationName,
+              operationDescription: op.operationDescription,
+              operationSeqNumber: op.operationSeqNumber,
+              workOrderCode: wo.workOrderCode,
+              assetCode: dto.assetCode,
+              assetShortDescription: asset.assetShortDescription ?? undefined,
+              unit: op.unit,
+              subunit: op.subunit,
+              maintainableItem: op.maintainableItem,
+              operationCategory: op.operationCategory,
+              operationSubType: op.operationSubType,
+              operationStatus: op.operationStatus,
+              operationType: op.operationType,
+              actualStartDate: new Date(op.actualStartDate),
+              actualCompletionDate: op.calculatedCompletionDate,
+              actualHours: op.calculatedActualHours,
+              workCenterCode: asset.workCenterCode ?? undefined,
+              workCenterDescription: asset.workCenterDescription ?? undefined,
+              centerCostCode: asset.centerCostCode ?? undefined,
+              workAreaCode: asset.workAreaCode ?? undefined,
+              workAreaDescription: asset.workAreaDescription ?? undefined,
+              sector: asset.sector ?? undefined,
+              subsector: asset.subsector ?? undefined,
+              organizationCode: asset.organizationCode,
+              organizationName: asset.organizationName ?? undefined,
+              createdBy: op.createdBy,
+              createdByName: dto.actorName,
+            },
+          });
+
+          for (const res of op.workOrderOperationResource) {
+            await tx.mntOperationHumanResourceUsage.create({
+              data: {
+                operationCode: createdOp.operationCode,
+                organizationCode: asset.organizationCode,
+                resourceCode: res.resourceCode,
+                plannedHours: res.plannedHours,
+                actualHours: res.actualHours,
+                hourlyCost: res.hourlyCost,
+                principalFlag: res.principalFlag ?? 'N',
+                resourceSequenceNumber: res.resourceSequenceNumber,
+                plannedStartDate: res.plannedStartDate,
+                plannedCompletionDate: res.plannedCompletionDate,
+                createdBy: dto.actorId,
+                createdByName: dto.actorName,
+              },
+            });
+          }
+
+          if (op.workOrderOperationMaterial && op.workOrderOperationMaterial.length > 0) {
+            for (const mat of op.workOrderOperationMaterial) {
+              await tx.mntOperationMaterialUsage.create({
+                data: {
+                  operationCode: createdOp.operationCode,
+                  organizationCode: asset.organizationCode,
+                  materialCode: mat.materialCode,
+                  quantity: mat.quantity,
+                  supplyType: mat.supplyType ?? '1',
+                  materialSequenceNumber: mat.materialSequenceNumber,
+                  createdBy: dto.actorId,
+                  createdByName: dto.actorName,
+                },
+              });
+            }
+          }
+        }
+
+        return wo;
+      });
+
+      const fullWorkOrder = await this.prisma.mntWorkOrder.findFirst({
+        where: { workOrderCode: workOrder.workOrderCode },
+        include: {
+          woOperations: {
+            include: {
+              hrUsages: true,
+              materialUsages: true,
+            },
+          },
         },
       });
 
-      return { workOrder };
+      const response = this.mapToResponse(fullWorkOrder!);
+
+      return { workOrder: response };
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({ status: 500, message: 'Internal server error' });
     }
   }
 
+  private mapToResponse(wo: any) {
+    return {
+      workOrderCode: wo.workOrderCode.toString(),
+      workOrderDescription: wo.workOrderDescription,
+      assetCode: wo.assetCode,
+      assetShortDescription: wo.assetShortDescription,
+      woStatusCode: wo.woStatusCode,
+      woStatusLabel: toTitleCase(wo.woStatusCode),
+      workOrderType: wo.workOrderType,
+      workOrderSubType: wo.workOrderSubType,
+      workOrderPriority: wo.workOrderPriority,
+      workCenterCode: wo.workCenterCode,
+      workCenterDescription: wo.workCenterDescription,
+      centerCostCode: wo.centerCostCode,
+      workAreaCode: wo.workAreaCode,
+      workAreaDescription: wo.workAreaDescription,
+      sector: wo.sector,
+      subsector: wo.subsector,
+      organizationCode: wo.organizationCode,
+      organizationName: wo.organizationName,
+      createdBy: wo.createdBy,
+      createdByName: wo.createdByName,
+      updatedBy: wo.updatedBy,
+      updatedByName: wo.updatedByName,
+      createdAt: wo.createdAt,
+      updatedAt: wo.updatedAt,
+      actualStartDate: wo.actualStartDate,
+      actualCompletionDate: wo.actualCompletionDate,
+      actualHours: wo.actualHours,
+      totalManHours: wo.totalManHours,
+      totalSupplierHours: wo.totalSupplierHours,
+      plannedHours: wo.plannedHours,
+      workRequestId: wo.workRequestId?.toString() ?? null,
+      enableOracleWorkOrder: wo.enableOracleWorkOrder,
+      oclWorkOrderId: wo.oclWorkOrderId?.toString() ?? null,
+      oclWorkOrderNumber: wo.oclWorkOrderNumber,
+      releasedDate: wo.releasedDate,
+      closedDate: wo.closedDate,
+      canceledDate: wo.canceledDate,
+      canceledReason: wo.canceledReason,
+      operations: wo.woOperations?.map((op: any) => ({
+        operationCode: op.operationCode.toString(),
+        operationName: op.operationName,
+        operationDescription: op.operationDescription,
+        operationSeqNumber: op.operationSeqNumber,
+        assetCode: op.assetCode,
+        assetShortDescription: op.assetShortDescription,
+        operationStatus: op.operationStatus,
+        operationStatusLabel: toTitleCase(op.operationStatus),
+        operationType: op.operationType,
+        operationSubType: op.operationSubType,
+        actualStartDate: op.actualStartDate,
+        actualCompletionDate: op.actualCompletionDate,
+        actualHours: op.actualHours,
+        workCenterCode: op.workCenterCode,
+        workCenterDescription: op.workCenterDescription,
+        workAreaCode: op.workAreaCode,
+        workAreaDescription: op.workAreaDescription,
+        organizationCode: op.organizationCode,
+        organizationName: op.organizationName,
+        createdBy: op.createdBy,
+        createdByName: op.createdByName,
+        createdAt: op.createdAt,
+        updatedAt: op.updatedAt,
+        workOrderOperationResource: op.hrUsages?.map((hr: any) => ({
+          id: hr.id.toString(),
+          resourceCode: hr.resourceCode,
+          resourceSequenceNumber: hr.resourceSequenceNumber,
+          plannedHours: hr.plannedHours,
+          actualHours: hr.actualHours,
+          principalFlag: hr.principalFlag,
+          organizationCode: hr.organizationCode,
+          createdBy: hr.createdBy,
+          createdByName: hr.createdByName,
+          createdAt: hr.createdAt,
+          updatedAt: hr.updatedAt,
+          transactedInOracle: hr.transactedInOracle,
+          oclWoOperationResourceId: hr.oclWoOperationResourceId?.toString() ?? null,
+          syncedToOracleAt: hr.syncedToOracleAt,
+        })),
+        workOrderOperationMaterial: op.materialUsages?.map((mat: any) => ({
+          id: mat.id.toString(),
+          materialCode: mat.materialCode,
+          materialName: mat.materialName,
+          materialSequenceNumber: mat.materialSequenceNumber,
+          quantity: mat.quantity,
+          supplyType: mat.supplyType,
+          unitCost: mat.unitCost?.toString() ?? null,
+          totalCost: mat.totalCost?.toString() ?? null,
+          organizationCode: mat.organizationCode,
+          createdBy: mat.createdBy,
+          createdByName: mat.createdByName,
+          createdAt: mat.createdAt,
+          updatedAt: mat.updatedAt,
+          transactedInOracle: mat.transactedInOracle,
+          oclWoOperationMaterialId: mat.oclWoOperationMaterialId?.toString() ?? null,
+          syncedToOracleAt: mat.syncedToOracleAt,
+        })),
+      })),
+    };
+  }
+
   async findOne(workOrderCode: number) {
     try {
       const workOrder = await this.prisma.mntWorkOrder.findFirst({
         where: { workOrderCode: BigInt(workOrderCode) },
+        include: {
+          woOperations: {
+            include: {
+              hrUsages: true,
+              materialUsages: true,
+            },
+          },
+        },
       });
 
       if (!workOrder) {
         throw new RpcException({ status: 404, message: 'Work order not found' });
       }
 
-      return { workOrder };
+      return { workOrder: this.mapToResponse(workOrder) };
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({ status: 500, message: 'Internal server error' });

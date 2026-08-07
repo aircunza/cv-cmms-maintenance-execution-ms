@@ -7,6 +7,7 @@ interface EnvVars {
   NATS_SERVERS: string[];
   NATS_USER: string;
   NATS_PASS: string;
+  ENABLE_ORACLE_WORK_ORDER_SYSTEM: string;
 }
 
 const envsSchema = joi
@@ -16,6 +17,7 @@ const envsSchema = joi
     NATS_SERVERS: joi.array().items(joi.string()).required(),
     NATS_USER: joi.string().required(),
     NATS_PASS: joi.string().required(),
+    ENABLE_ORACLE_WORK_ORDER_SYSTEM: joi.string().valid('Y', 'N').required(),
   })
   .unknown(true);
 
@@ -36,4 +38,5 @@ export const envs = {
   natsServers: envVars.NATS_SERVERS,
   natsUser: envVars.NATS_USER,
   natsPass: envVars.NATS_PASS,
+  enableOracleWorkOrderSystem: envVars.ENABLE_ORACLE_WORK_ORDER_SYSTEM,
 };

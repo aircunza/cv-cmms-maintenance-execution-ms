@@ -10,25 +10,7 @@ import {
 import { Type } from "class-transformer";
 import { CreateWoOperationDto } from "./create-wo-operation.dto";
 
-const VALID_TYPE_SUBTYPE_COMBOS = [
-  { workOrderType: "Planned", workOrderSubType: "Preventive" },
-  { workOrderType: "Planned", workOrderSubType: "Corrective" },
-  { workOrderType: "Planned", workOrderSubType: "Inspection" },
-  { workOrderType: "Planned", workOrderSubType: "TPM" },
-  { workOrderType: "Not Planned", workOrderSubType: "Emergency" },
-];
-
-export function isValidTypeSubtypeCombination(
-  type: string,
-  subType: string,
-): boolean {
-  return VALID_TYPE_SUBTYPE_COMBOS.some(
-    (combo) =>
-      combo.workOrderType === type && combo.workOrderSubType === subType,
-  );
-}
-
-export class CreateWorkOrderDto {
+export class CreateWorkOrderMessageDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(240)
@@ -91,4 +73,22 @@ export class CreateWorkOrderDto {
 
   @IsOptional()
   plannedCompletionDate?: Date;
+
+  @IsString()
+  @IsNotEmpty()
+  actorId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  actorName!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  organizationCode!: string;
+
+  @IsArray()
+  userPermissions!: string[];
+
+  @IsArray()
+  userRoles!: string[];
 }

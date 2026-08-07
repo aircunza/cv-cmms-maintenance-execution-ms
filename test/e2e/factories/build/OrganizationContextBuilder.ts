@@ -1,6 +1,7 @@
 import { PrismaService } from "src/prisma.service";
 import { mockAssets } from "../../data/mnt.assets.mock";
 import { mockOrganizations } from "../../data/organizations.mock";
+import { mockHumanResources } from "../../data/hr.mock";
 
 export class OrganizationContextBuilder {
   constructor(private readonly prisma: PrismaService) {}
@@ -45,6 +46,14 @@ export class OrganizationContextBuilder {
         },
       });
     }
+
+    for (const hr of mockHumanResources) {
+      await this.prisma.mntHumanResource.upsert({
+        where: { resourceCode: hr.resourceCode },
+        create: hr,
+        update: hr,
+      });
+    }
   }
 
   async teardown(): Promise<void> {
@@ -83,5 +92,17 @@ export class OrganizationContextBuilder {
         where: { assetCode: { in: assetCodes } },
       });
     });
+  }
+
+  async createWorkRequest(data: {
+    requestId: bigint;
+    assetCode: string;
+    issueDescription: string;
+    statusCode: string;
+    organizationCode: string;
+    createdBy: string;
+    createdByName: string;
+  }): Promise<void> {
+    await this.prisma.mntWorkRequest.create({ data });
   }
 }

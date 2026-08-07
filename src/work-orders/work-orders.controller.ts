@@ -2,7 +2,7 @@ import { Controller } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import { WorkOrdersService } from './work-orders.service';
 import {
-  CreateWorkOrderDto,
+  CreateWorkOrderMessageDto,
   UpdateWorkOrderDto,
   FindAllWorkOrderDto,
   WorkOrderCodeDto,
@@ -13,7 +13,7 @@ export class WorkOrdersController {
   constructor(private readonly workOrdersService: WorkOrdersService) {}
 
   @MessagePattern('work.order.create')
-  create(@Payload() dto: CreateWorkOrderDto & { actorId: string; actorName: string }) {
+  create(@Payload() dto: CreateWorkOrderMessageDto) {
     return this.workOrdersService.create(dto);
   }
 

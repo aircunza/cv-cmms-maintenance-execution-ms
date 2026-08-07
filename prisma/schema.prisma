@@ -146,6 +146,9 @@ model MntWorkOrder {
   updatedByName         String?   @map("updated_by_name") @db.NVarChar(70)
   oclWorkOrderId        BigInt?   @map("ocl_work_order_id")
   oclWorkOrderNumber    String?   @map("ocl_work_order_number") @db.NVarChar(120)
+  enableOracleWorkOrder String    @default("N") @map("enable_oracle_work_order") @db.Char(1)
+  totalManHours         Float?    @map("total_man_hours")
+  totalSupplierHours    Float?    @map("total_supplier_hours")
   createdAt             DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
   updatedAt             DateTime? @map("updated_at") @db.DateTimeOffset
 
@@ -169,6 +172,7 @@ model MntWoOperation {
   subunit               String?   @db.NVarChar(240)
   maintainableItem      String?   @map("maintainable_item") @db.NVarChar(240)
   operationCategory     String?   @map("operation_category") @db.NVarChar(100)
+  operationSubType      String?   @map("operation_sub_type") @db.NVarChar(30)
   operationStatus       String    @map("operation_status") @db.NVarChar(30)
   operationType         String?   @map("operation_type") @db.NVarChar(30)
   plannedStartDate      DateTime? @map("planned_start_date") @db.DateTimeOffset
@@ -179,7 +183,6 @@ model MntWoOperation {
   actualHours           Float?    @map("actual_hours")
   oclWorkOrderId        BigInt?   @map("ocl_work_order_id")
   oclWorkOrderNumber    String?   @map("ocl_work_order_number") @db.NVarChar(120)
-  clientOperationId     String?   @map("client_operation_id") @db.UniqueIdentifier
   workCenterCode        String?   @map("work_center_code") @db.NVarChar(255)
   workCenterDescription String?   @map("work_center_description") @db.NVarChar(255)
   centerCostCode        Int?      @map("center_cost_code")
@@ -203,7 +206,6 @@ model MntWoOperation {
   materialUsages MntOperationMaterialUsage[]
   hrUsages       MntOperationHumanResourceUsage[]
 
-  @@unique([clientOperationId], map: "uq_wo_op_client_op_id")
   @@index([workOrderCode], map: "idx_wo_op_work_order_code")
   @@index([assetCode], map: "idx_wo_op_asset_code")
   @@map("mnt_wo_operations")
@@ -248,7 +250,6 @@ model MntOperationHumanResourceUsage {
   resourceSequenceNumber   Int?      @map("resource_sequence_number")
   plannedStartDate         DateTime? @map("planned_start_date") @db.DateTimeOffset
   plannedCompletionDate    DateTime? @map("planned_completion_date") @db.DateTimeOffset
-  usageRate                Decimal?  @map("usage_rate") @db.Decimal(18, 2)
   transactedInOracle       String?   @default("N") @map("transacted_in_oracle") @db.Char(1)
   oclWoOperationResourceId BigInt?   @map("ocl_wo_operation_resource_id")
   syncedToOracleAt         DateTime? @map("synced_to_oracle_at") @db.DateTimeOffset

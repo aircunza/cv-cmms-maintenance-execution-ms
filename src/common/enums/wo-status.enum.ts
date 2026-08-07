@@ -11,10 +11,10 @@ export const WO_STATUS = {
 export type WorkOrderStatus = (typeof WO_STATUS)[keyof typeof WO_STATUS];
 
 export const WO_STATUS_TRANSITIONS: Record<string, string[]> = {
-  UNRELEASED: ['RELEASED', 'CANCELED'],
+  UNRELEASED: ['ON_HOLD', 'RELEASED', 'CANCELED'],
   RELEASED: ['COMPLETED', 'ON_HOLD', 'CANCELED'],
   ON_HOLD: ['RELEASED', 'CANCELED'],
-  COMPLETED: ['CLOSED'],
+  COMPLETED: ['CLOSED', 'RELEASED'],
   CLOSED: [],
   CANCELED: [],
   PENDING_APPROVAL: ['UNRELEASED'],

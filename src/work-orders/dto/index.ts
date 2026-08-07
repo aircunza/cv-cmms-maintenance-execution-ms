@@ -1,4 +1,9 @@
 export * from './create-work-order.dto';
+export { isValidTypeSubtypeCombination } from './create-work-order.dto';
+export * from './create-work-order-message.dto';
+export * from './create-wo-operation.dto';
+export * from './create-wo-operation-resource.dto';
+export * from './create-wo-operation-material.dto';
 export * from './update-work-order.dto';
 export * from './find-all-work-order.dto';
 export * from './work-order-code.dto';

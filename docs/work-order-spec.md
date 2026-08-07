@@ -16,7 +16,28 @@ Creates a new Work Order with one or more operations, each containing resources 
 
 The endpoint requires:
 
-- **Gateway Auth**: Valid authentication token delegated to the gateway. The gateway passes `actorId` and `actorName` in the NATS payload.
+- **Gateway Auth**: Valid authentication token delegated to the gateway. The gateway resolves the user's permissions and roles from the auth service and injects them into the NATS payload.
+
+#### Gateway-Injected Fields
+
+The gateway MUST inject the following fields into the NATS payload after validating the JWT token and resolving the target organization from the `X-Organization-Code` header:
+
+| Field             | Type       | Source                                                                 |
+| ----------------- | ---------- | ---------------------------------------------------------------------- |
+| actorId           | string     | User ID from JWT payload                                               |
+| actorName         | string     | User name from JWT payload                                             |
+| organizationCode  | string     | Target organization from `X-Organization-Code` header (validated)      |
+| userPermissions   | string[]   | Permissions from the user's role(s) in the target organization         |
+| userRoles         | string[]   | Role codes from the user's assignments in the target organization      |
+
+The client SHALL NOT send these fields directly. They are exclusively set by the gateway.
+
+The gateway MUST validate that:
+1. The `X-Organization-Code` header is present and valid
+2. The authenticated user has access to the specified organization
+3. The `userPermissions` and `userRoles` are extracted from that specific organization's context
+
+The microservice SHALL validate that the asset's `organizationCode` matches the gateway-injected `organizationCode`. If they do not match, the request is rejected with a 403 status and error code `ORGANIZATION_MISMATCH`.
 
 - **OracleWorkOrderPolicy**: When `enableOracleWorkOrder = "Y"`, user must have permission `oracle.mnt.work.orders.create` and an allowed role within the organization
 - **WorkOrderSubTypePolicy**: User's role must be authorized to create the requested `workOrderSubType`
@@ -38,11 +59,13 @@ The endpoint requires:
 
 #### Oracle Work Order Authorization
 
-When `enableOracleWorkOrder = "Y"`:
+The system-level environment variable `ENABLE_ORACLE_WORK_ORDER_SYSTEM` acts as a global feature flag:
 
-- User must have permission `oracle.mnt.work.orders.create`
-- User must have one of the allowed roles in the specified organization
-- Allowed roles: MANUFACTURING_FACILITATOR, TECHNICIAN_MAINTENANCE_01, TECHNICIAN_MAINTENANCE_02, PLANNER_MAINTENANCE_01, PLANNER_MAINTENANCE_02, COORDINATOR_MAINTENANCE_01, COORDINATOR_MAINTENANCE_02, SUPERVISOR_MAINTENANCE_01, SUPERVISOR_MAINTENANCE_02, ADMIN
+- If `"N"`: Oracle permission checks are bypassed. Work orders are always created locally regardless of `enableOracleWorkOrder` value.
+- If `"Y"`: When the client sends `enableOracleWorkOrder = "Y"`:
+  - User must have permission `oracle.mnt.work.orders.create` (injected by gateway as `userPermissions`)
+  - User must have one of the allowed roles (injected by gateway as `userRoles`)
+  - Allowed roles: MANUFACTURING_FACILITATOR, TECHNICIAN_MAINTENANCE_01, TECHNICIAN_MAINTENANCE_02, PLANNER_MAINTENANCE_01, PLANNER_MAINTENANCE_02, COORDINATOR_MAINTENANCE_01, COORDINATOR_MAINTENANCE_02, SUPERVISOR_MAINTENANCE_01, SUPERVISOR_MAINTENANCE_02, ADMIN
 
 ### Request
 
@@ -56,14 +79,25 @@ When `enableOracleWorkOrder = "Y"`:
 | workOrderType        | string                      | 30         | Work order type (e.g., "Planned", "Not Planned").                    |
 | workOrderSubType     | string                      | 30         | Work order sub-type (e.g., "Preventive", "Corrective", "Emergency"). |
 | workOrderPriority    | string ("1"\|"2"\|"3"\|"4") | -          | Priority level (1=highest, 4=lowest).                                |
-| operations           | array                       | -          | Array of operations (at least one required).                         |
+| enableOracleWorkOrder| string ("Y"\|"N")           | 1          | Flag to enable Oracle integration.                                   |
+| operations           | array                       | -          | Array of operations. If empty or missing, a default operation is created. |
+
+#### Gateway-Injected Fields (Work Order Level)
+
+These fields are injected by the gateway and SHALL NOT be provided by the client:
+
+| Field             | Type       | Description                                                        |
+| ----------------- | ---------- | ------------------------------------------------------------------ |
+| actorId           | string     | User ID from JWT payload.                                          |
+| actorName         | string     | User name from JWT payload.                                        |
+| userPermissions   | string[]   | Flattened array of permission codes from all user roles.           |
+| userRoles         | string[]   | Array of role codes from the user's organization assignments.      |
 
 #### Optional Fields (Work Order Level)
 
 | Field                 | Type              | Default | Description                                         |
 | --------------------- | ----------------- | ------- | --------------------------------------------------- |
 | workRequestId         | BigInt            | null    | Associated work request identifier.                 |
-| enableOracleWorkOrder | string ("Y"\|"N") | -       | Flag to enable Oracle integration. **Required**.    |
 | workDefinitionCode    | string            | -       | Work definition code.                               |
 | schedulingMethod      | string            | -       | Scheduling method.                                  |
 | needByDate            | Date (ISO 8601)   | -       | Date by which the work order needs to be completed. |
@@ -240,6 +274,11 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
 
 ```json
 {
+  "actorId": "550e8400-e29b-41d4-a716-446655440001",
+  "actorName": "John Doe",
+  "organizationCode": "ORG-BOG-001",
+  "userPermissions": ["mnt.work.orders.create", "oracle.mnt.work.orders.create"],
+  "userRoles": ["PLANNER_MAINTENANCE_01"],
   "enableOracleWorkOrder": "N",
   "workOrderDescription": "Preventive maintenance on hydraulic pump",
   "woStatusCode": "UNRELEASED",
@@ -247,8 +286,6 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
   "workOrderType": "Planned",
   "workOrderSubType": "Preventive",
   "workOrderPriority": "2",
-  "actorId": "550e8400-e29b-41d4-a716-446655440001",
-  "actorName": "John Doe",
   "operations": [
     {
       "operationName": "Lubrication",
@@ -361,12 +398,20 @@ Allowed combinations:
 
 **R-WO-CR-07**
 
-IF `enableOracleWorkOrder = "Y"` and the user lacks the required Oracle permission or role,  
+IF `enableOracleWorkOrder = "Y"` and the system-level `ENABLE_ORACLE_WORK_ORDER_SYSTEM` is `"Y"` and the user lacks the required Oracle permission (`oracle.mnt.work.orders.create`) or does not have an allowed role,  
 THEN the system SHALL reject the request with a 403 status.
+
+IF `enableOracleWorkOrder = "Y"` but the system-level `ENABLE_ORACLE_WORK_ORDER_SYSTEM` is `"N"`,  
+THEN the Oracle permission check is skipped and the work order is created locally without Oracle sync.
+
+**R-WO-CR-07B**
+
+IF the asset's `organizationCode` does not match the gateway-injected `organizationCode`,  
+THEN the system SHALL reject the request with a 403 status and error code `ORGANIZATION_MISMATCH`.
 
 **R-WO-CR-08**
 
-IF the user's role is not authorized to create the specified `workOrderSubType`,  
+IF the user's role (from gateway-injected `userRoles`) is not authorized to create the specified `workOrderSubType`,  
 THEN the system SHALL reject the request with a 403 status.
 
 **R-WO-CR-09**
@@ -761,13 +806,18 @@ THEN the system SHALL return a 400 status with an `errors` array containing fiel
 
 **R-WO-CR-32**
 
-IF the user lacks Oracle permission when `enableOracleWorkOrder = "Y"`,  
+IF `enableOracleWorkOrder = "Y"` and `ENABLE_ORACLE_WORK_ORDER_SYSTEM = "Y"` and the user lacks the Oracle permission (`oracle.mnt.work.orders.create`) or does not have an allowed role,  
 THEN the system SHALL return a 403 status with error code `MISSING_ORACLE_PERMISSION`.
 
 **R-WO-CR-33**
 
-IF the user's role is not authorized for the requested sub-type,  
+IF the user's role (from gateway-injected `userRoles`) is not authorized for the requested sub-type,  
 THEN the system SHALL return a 403 status with error code `SUBTYPE_NOT_ALLOWED_FOR_ROLE`.
+
+**R-WO-CR-33B**
+
+IF the asset's `organizationCode` does not match the gateway-injected `organizationCode`,  
+THEN the system SHALL return a 403 status with error code `ORGANIZATION_MISMATCH`.
 
 **R-WO-CR-34**
 
@@ -778,98 +828,67 @@ THEN the system SHALL return an internal server error response.
 
 ## Corregir el código ya existente
 
-> Esta sección documenta las discrepancias entre el spec y el código/schema actual del microservicio. Una vez que se apliquen las correcciones, esta sección puede ser eliminada.
+> ~~Esta sección documenta las discrepancias entre el spec y el código/schema actual del microservicio. Una vez que se apliquen las correcciones, esta sección puede ser eliminada.~~
+>
+> **Todos los cambios listados en esta sección han sido implementados.**
 
-### Schema (Prisma) - Cambios necesarios
+### Schema (Prisma) - Implementado
 
-1. **Agregar campos a `MntWorkOrder`:**
+1. **Campos agregados a `MntWorkOrder`:**
    - `enableOracleWorkOrder` (String, @db.Char(1), obligatorio)
    - `totalManHours` (Float, optional)
    - `totalSupplierHours` (Float, optional)
 
-2. **Eliminar campos de `MntWoOperation`:**
-   - `clientOperationId` (no se usa, eliminar)
+2. **Campos eliminados de `MntWoOperation`:**
+   - `clientOperationId` (eliminado)
 
-3. **Eliminar campos de `MntOperationHumanResourceUsage`:**
-   - `usageRate` (no se usa, eliminar)
+3. **Campos eliminados de `MntOperationHumanResourceUsage`:**
+   - `usageRate` (eliminado)
 
-### DTOs - Cambios necesarios
+4. **Campo agregado a `MntWoOperation`:**
+   - `operationSubType` (String, @db.NVarChar(30))
 
-4. **`CreateWorkOrderDto`:**
-   - Agregar `enableOracleWorkOrder` como obligatorio (`@IsNotEmpty()`)
-   - Agregar `actorId` y `actorName` (se reciben del gateway)
-   - Agregar `operations` como array de `CreateWoOperationDto`
-   - Cambiar `workOrderPriority` a requerido
-   - Cambiar `woStatusCode` a requerido
-   - Agregar validación de `workOrderType`/`workOrderSubType` combinaciones válidas
-   - Los campos `workCenterCode`, `workAreaCode`, `organizationCode`, etc. deben ser inferidos del asset, no enviados por el cliente
+### DTOs - Implementado
 
-5. **`CreateWoOperationDto`:**
-   - Agregar `operationSubType` como requerido (debe coincidir con `workOrderSubType`)
-   - Cambiar `operationStatus` a requerido
-   - Cambiar `operationType` a requerido
-   - Cambiar `createdBy` a requerido
-   - Agregar `workOrderOperationResource` como array requerido (no-empty)
-   - Agregar `workOrderOperationMaterial` como array opcional
-   - Agregar `unit`, `subunit`, `maintainableItem`, `operationCategory` como opcionales
-   - `workOrderCode` NO debe ser enviado por el cliente (se asigna al crear el WO)
+5. **`CreateWorkOrderDto`:** reescrito con campos obligatorios, validación de combinaciones type/subtype, y `operations` como array anidado opcional.
 
-6. **`CreateOperationHrDto`:**
-   - Cambiar `plannedHours` a requerido (`@IsNotEmpty()`)
-   - Cambiar `actualHours` a requerido (`@IsNotEmpty()`)
-   - Cambiar `resourceSequenceNumber` a requerido (`@IsNotEmpty()`)
-   - `operationCode` NO debe ser enviado por el cliente (se infiere del contexto)
+6. **`CreateWoOperationDto`:** nuevo DTO con campos requeridos y arrays anidados de resources y materials.
 
-7. **`CreateOperationMaterialDto`:**
-   - Cambiar `materialSequenceNumber` a requerido
-   - Cambiar `quantity` a requerido
-   - Cambiar `supplyType` a requerido
-   - `operationCode` NO debe ser enviado por el cliente (se infiere del contexto)
+7. **`CreateWoOperationResourceDto`:** nuevo DTO para recursos dentro de operaciones.
 
-### Service - Cambios necesarios
+8. **`CreateWoOperationMaterialDto`:** nuevo DTO para materiales dentro de operaciones.
 
-8. **`WorkOrdersService.create()`:**
-   - Implementar validación de combinaciones `workOrderType`/`workOrderSubType`
-   - Implementar creación conjunta de WO + Operations + Resources + Materials en transacción
-   - Implementar cálculo de `actualHours` desde resources (paralelo/secuencial)
-   - Implementar recálculo de `actualCompletionDate` desde `actualStartDate + actualHours`
-   - Implementar validación de orden secuencial de operaciones
-   - Implementar validación de compatibilidad `woStatusCode` ↔ `operationStatus`
-   - Implementar inferencia de campos del asset (`assetShortDescription`, `workCenterCode`, `workAreaCode`, etc.)
-   - Implementar propagación de `assetCode` y `assetShortDescription` a operaciones
-   - Implementar validación de `operationSubType` === `workOrderSubType`
-   - Implementar publicación de `WorkOrderCreatedEvent` al outbox si `enableOracleWorkOrder = "Y"`
-   - Agregar `woStatusLabel` y `operationStatusLabel` en la respuesta (Title Case)
+9. **`CreateOperationHrDto`:** actualizado - `operationCode` eliminado del DTO (se pasa en el payload del controller), campos requeridos validados.
 
-9. **Status Transitions - Actualizar en código:**
+10. **`CreateOperationMaterialDto`:** actualizado - `operationCode` eliminado del DTO (se pasa en el payload del controller), campos requeridos validados.
 
-   ```
-   UNRELEASED → ON_HOLD, RELEASED, CANCELED
-   RELEASED → COMPLETED, ON_HOLD, CANCELED
-   ON_HOLD → RELEASED, CANCELED
-   COMPLETED → CLOSED, RELEASED
-   CLOSED → []
-   CANCELED → []
-   PENDING_APPROVAL → UNRELEASED
-   ```
+### Service - Implementado
 
-10. **Policy - Implementar `WorkOrderSubTypePolicy`:**
-    - Crear política de autorización basada en roles para sub-tipos
-    - Integrar con el gateway para validación antes de procesar
+11. **`WorkOrdersService.create()`:** reescrito con validación completa, transacción, cálculos y creación anidada. Incluye validación de que `asset.organizationCode` coincida con el `organizationCode` inyectado por el gateway.
 
-11. **Policy - Implementar `OracleWorkOrderPolicy`:**
-    - Validar permiso `oracle.mnt.work.orders.create` cuando `enableOracleWorkOrder = "Y"`
-    - Validar roles permitidos dentro de la organización
+### Status Transitions - Implementado
 
-### Enums - Cambios necesarios
+12. **Transiciones actualizadas:**
+    ```
+    UNRELEASED → ON_HOLD, RELEASED, CANCELED
+    RELEASED → COMPLETED, ON_HOLD, CANCELED
+    ON_HOLD → RELEASED, CANCELED
+    COMPLETED → CLOSED, RELEASED
+    CLOSED → []
+    CANCELED → []
+    PENDING_APPROVAL → UNRELEASED
+    ```
 
-12. **Status values:**
-    - Usar UPPER_SNAKE_CASE internamente (`UNRELEASED`, `RELEASED`, `IN_PROCESS`, etc.)
-    - Incluir mapeo a Title Case para respuestas (`woStatusLabel`, `operationStatusLabel`)
+### Policies - Implementado
+
+13. **`WorkOrderSubTypePolicy`:** validación de role → subType.
+
+14. **`OracleWorkOrderPolicy`:** validación de feature flag `ENABLE_ORACLE_WORK_ORDER_SYSTEM` + permisos Oracle + roles permitidos.
 
 ### Architecture
 
-13. **NATS Communication:**
-    - El endpoint se comunica vía NATS pattern `work.order.create` hacia el gateway
-    - El gateway maneja autenticación y pasa `actorId`/`actorName` en el payload
-    - La respuesta debe incluir tanto UPPER_SNAKE_CASE como Title Case para status
+15. **NATS Communication:**
+    - El gateway lee el header `X-Organization-Code` del request HTTP y valida que el usuario tenga acceso a esa organización
+    - El gateway inyecta `actorId`, `actorName`, `organizationCode`, `userPermissions` (string[]), y `userRoles` (string[]) en el payload NATS
+    - El microservicio valida que el asset pertenezca a la misma organización
+    - La respuesta incluye tanto UPPER_SNAKE_CASE como Title Case para status
