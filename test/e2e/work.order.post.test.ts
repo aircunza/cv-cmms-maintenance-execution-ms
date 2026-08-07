@@ -994,6 +994,107 @@ describe("WO Creation POST (e2e, NATS)", () => {
     );
   });
 
+  it("rejects when operationName > 120 chars", async () => {
+    await assertRpcError(
+      createWorkOrder(context, {
+        operations: [
+          {
+            operationName: "A".repeat(121),
+            operationDescription: "Too long name",
+            operationSeqNumber: 10,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T08:00:00.000Z",
+            actualCompletionDate: "2025-11-21T10:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                plannedHours: 2,
+                actualHours: 2,
+              },
+            ],
+          },
+        ],
+      }),
+      400,
+      "must be shorter than or equal to 120 characters",
+    );
+  });
+
+  it("rejects when operation createdBy is not a valid UUID", async () => {
+    await assertRpcError(
+      createWorkOrder(context, {
+        operations: [
+          {
+            operationName: "Bad UUID",
+            operationDescription: "Invalid UUID",
+            operationSeqNumber: 10,
+            createdBy: "not-a-uuid",
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T08:00:00.000Z",
+            actualCompletionDate: "2025-11-21T10:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                plannedHours: 2,
+                actualHours: 2,
+              },
+            ],
+          },
+        ],
+      }),
+      400,
+      "has invalid createdBy UUID",
+    );
+  });
+
+  it("rejects when woStatusCode is not UPPER_SNAKE_CASE", async () => {
+    await assertRpcError(
+      createWorkOrder(context, { woStatusCode: "unreleased" }),
+      400,
+      "must be a valid UPPER_SNAKE_CASE status",
+    );
+  });
+
+  it("rejects when operation has invalid ISO 8601 date", async () => {
+    await assertRpcError(
+      createWorkOrder(context, {
+        operations: [
+          {
+            operationName: "Bad Date",
+            operationDescription: "Invalid date",
+            operationSeqNumber: 10,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "not-a-date",
+            actualCompletionDate: "2025-11-21T10:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                plannedHours: 2,
+                actualHours: 2,
+              },
+            ],
+          },
+        ],
+      }),
+      400,
+      "must be a valid ISO 8601 date string",
+    );
+  });
+
   // ==================== ASSET VALIDATIONS (404) ====================
 
   it("rejects when asset not found", async () => {

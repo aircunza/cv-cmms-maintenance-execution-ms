@@ -456,7 +456,7 @@ THEN the system SHALL reject the request.
 
 **R-WO-CR-17**
 
-IF no resource in an operation has `actualHours > 0`,  
+EACH resource in an operation MUST have `actualHours > 0`. IF any resource has `actualHours <= 0`,  
 THEN the system SHALL reject the request.
 
 **R-WO-CR-18**
@@ -602,7 +602,7 @@ At creation time, each operation's `operationSubType` MUST match the parent Work
 **R-WO-CR-30**
 
 WHEN the Work Order is created successfully,  
-the system SHALL return a 201 status with the created Work Order including:
+the system SHALL return a 201 status with the created Work Order wrapped in a `workOrder` object including:
 
 - workOrderCode
 - All Work Order fields with calculated values (actualHours, actualStartDate, actualCompletionDate)
@@ -615,8 +615,9 @@ the system SHALL return a 201 status with the created Work Order including:
 
 ```json
 {
-  "workOrderCode": 1001,
-  "workOrderDescription": "Preventive maintenance on hydraulic pump",
+  "workOrder": {
+    "workOrderCode": "1001",
+    "workOrderDescription": "Preventive maintenance on hydraulic pump",
   "assetCode": "AST-001",
   "assetShortDescription": "Hydraulic Pump Unit",
   "woStatusCode": "UNRELEASED",
@@ -794,6 +795,7 @@ the system SHALL return a 201 status with the created Work Order including:
       "workOrderOperationMaterial": []
     }
   ]
+  }
 }
 ```
 
@@ -802,7 +804,7 @@ the system SHALL return a 201 status with the created Work Order including:
 **R-WO-CR-31**
 
 IF the request contains validation errors,  
-THEN the system SHALL return a 400 status with an `errors` array containing field-specific error messages.
+THEN the system SHALL return a 400 status with a `message` field containing an array of validation error strings (e.g., `["workOrderDescription should not be empty"]`). For nested DTO validation, messages include the field path (e.g., `["operations.0.operationName must be longer than or equal to 2 characters"]`).
 
 **R-WO-CR-32**
 

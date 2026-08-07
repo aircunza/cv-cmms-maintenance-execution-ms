@@ -42,6 +42,13 @@ export class WorkOrdersService {
         });
       }
 
+      if (!/^[A-Z][A-Z0-9_]*$/.test(dto.woStatusCode)) {
+        throw new RpcException({
+          status: 400,
+          message: `woStatusCode "${dto.woStatusCode}" must be a valid UPPER_SNAKE_CASE status`,
+        });
+      }
+
       const oracleCheck = this.oraclePolicy.validate(dto.userPermissions, dto.userRoles);
       if (dto.enableOracleWorkOrder === 'Y' && !oracleCheck.valid) {
         throw new RpcException({
