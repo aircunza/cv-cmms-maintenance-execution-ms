@@ -22,17 +22,18 @@ The endpoint requires:
 
 The gateway MUST inject the following fields into the NATS payload after validating the JWT token and resolving the target organization from the `X-Organization-Code` header:
 
-| Field             | Type       | Source                                                                 |
-| ----------------- | ---------- | ---------------------------------------------------------------------- |
-| actorId           | string     | User ID from JWT payload                                               |
-| actorName         | string     | User name from JWT payload                                             |
-| organizationCode  | string     | Target organization from `X-Organization-Code` header (validated)      |
-| userPermissions   | string[]   | Permissions from the user's role(s) in the target organization         |
-| userRoles         | string[]   | Role codes from the user's assignments in the target organization      |
+| Field            | Type     | Source                                                            |
+| ---------------- | -------- | ----------------------------------------------------------------- |
+| actorId          | string   | User ID from JWT payload                                          |
+| actorName        | string   | User name from JWT payload                                        |
+| organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
+| userPermissions  | string[] | Permissions from the user's role(s) in the target organization    |
+| userRoles        | string[] | Role codes from the user's assignments in the target organization |
 
 The client SHALL NOT send these fields directly. They are exclusively set by the gateway.
 
 The gateway MUST validate that:
+
 1. The `X-Organization-Code` header is present and valid
 2. The authenticated user has access to the specified organization
 3. The `userPermissions` and `userRoles` are extracted from that specific organization's context
@@ -71,38 +72,38 @@ The system-level environment variable `ENABLE_ORACLE_WORK_ORDER_SYSTEM` acts as 
 
 #### Required Fields (Work Order Level)
 
-| Field                | Type                        | Max Length | Description                                                          |
-| -------------------- | --------------------------- | ---------- | -------------------------------------------------------------------- |
-| workOrderDescription | string                      | 240        | Description of the work order.                                       |
-| woStatusCode         | string                      | 30         | Status code in UPPER_SNAKE_CASE (e.g., "UNRELEASED", "RELEASED").    |
-| assetCode            | string                      | 80         | Asset identifier.                                                    |
-| workOrderType        | string                      | 30         | Work order type (e.g., "Planned", "Not Planned").                    |
-| workOrderSubType     | string                      | 30         | Work order sub-type (e.g., "Preventive", "Corrective", "Emergency"). |
-| workOrderPriority    | string ("1"\|"2"\|"3"\|"4") | -          | Priority level (1=highest, 4=lowest).                                |
-| enableOracleWorkOrder| string ("Y"\|"N")           | 1          | Flag to enable Oracle integration.                                   |
-| operations           | array                       | -          | Array of operations. If empty or missing, a default operation is created. |
+| Field                 | Type                        | Max Length | Description                                                               |
+| --------------------- | --------------------------- | ---------- | ------------------------------------------------------------------------- |
+| workOrderDescription  | string                      | 240        | Description of the work order.                                            |
+| woStatusCode          | string                      | 30         | Status code in UPPER_SNAKE_CASE (e.g., "UNRELEASED", "RELEASED").         |
+| assetCode             | string                      | 80         | Asset identifier.                                                         |
+| workOrderType         | string                      | 30         | Work order type (e.g., "Planned", "Not Planned").                         |
+| workOrderSubType      | string                      | 30         | Work order sub-type (e.g., "Preventive", "Corrective", "Emergency").      |
+| workOrderPriority     | string ("1"\|"2"\|"3"\|"4") | -          | Priority level (1=highest, 4=lowest).                                     |
+| enableOracleWorkOrder | string ("Y"\|"N")           | 1          | Flag to enable Oracle integration.                                        |
+| operations            | array                       | -          | Array of operations. If empty or missing, a default operation is created. |
 
 #### Gateway-Injected Fields (Work Order Level)
 
 These fields are injected by the gateway and SHALL NOT be provided by the client:
 
-| Field             | Type       | Description                                                        |
-| ----------------- | ---------- | ------------------------------------------------------------------ |
-| actorId           | string     | User ID from JWT payload.                                          |
-| actorName         | string     | User name from JWT payload.                                        |
-| userPermissions   | string[]   | Flattened array of permission codes from all user roles.           |
-| userRoles         | string[]   | Array of role codes from the user's organization assignments.      |
+| Field           | Type     | Description                                                   |
+| --------------- | -------- | ------------------------------------------------------------- |
+| actorId         | string   | User ID from JWT payload.                                     |
+| actorName       | string   | User name from JWT payload.                                   |
+| userPermissions | string[] | Flattened array of permission codes from all user roles.      |
+| userRoles       | string[] | Array of role codes from the user's organization assignments. |
 
 #### Optional Fields (Work Order Level)
 
-| Field                 | Type              | Default | Description                                         |
-| --------------------- | ----------------- | ------- | --------------------------------------------------- |
-| workRequestId         | BigInt            | null    | Associated work request identifier.                 |
-| workDefinitionCode    | string            | -       | Work definition code.                               |
-| schedulingMethod      | string            | -       | Scheduling method.                                  |
-| needByDate            | Date (ISO 8601)   | -       | Date by which the work order needs to be completed. |
-| plannedStartDate      | Date (ISO 8601)   | -       | Planned start date (for advanced scheduling).       |
-| plannedCompletionDate | Date (ISO 8601)   | -       | Planned completion date (for advanced scheduling).  |
+| Field                 | Type            | Default | Description                                         |
+| --------------------- | --------------- | ------- | --------------------------------------------------- |
+| workRequestId         | BigInt          | null    | Associated work request identifier.                 |
+| workDefinitionCode    | string          | -       | Work definition code.                               |
+| schedulingMethod      | string          | -       | Scheduling method.                                  |
+| needByDate            | Date (ISO 8601) | -       | Date by which the work order needs to be completed. |
+| plannedStartDate      | Date (ISO 8601) | -       | Planned start date (for advanced scheduling).       |
+| plannedCompletionDate | Date (ISO 8601) | -       | Planned completion date (for advanced scheduling).  |
 
 #### Operation Object Structure
 
@@ -277,7 +278,10 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
   "actorId": "550e8400-e29b-41d4-a716-446655440001",
   "actorName": "John Doe",
   "organizationCode": "ORG-BOG-001",
-  "userPermissions": ["mnt.work.orders.create", "oracle.mnt.work.orders.create"],
+  "userPermissions": [
+    "mnt.work.orders.create",
+    "oracle.mnt.work.orders.create"
+  ],
   "userRoles": ["PLANNER_MAINTENANCE_01"],
   "enableOracleWorkOrder": "N",
   "workOrderDescription": "Preventive maintenance on hydraulic pump",
@@ -618,183 +622,183 @@ the system SHALL return a 201 status with the created Work Order wrapped in a `w
   "workOrder": {
     "workOrderCode": "1001",
     "workOrderDescription": "Preventive maintenance on hydraulic pump",
-  "assetCode": "AST-001",
-  "assetShortDescription": "Hydraulic Pump Unit",
-  "woStatusCode": "UNRELEASED",
-  "woStatusLabel": "Unreleased",
-  "workOrderType": "Planned",
-  "workOrderSubType": "Preventive",
-  "workOrderPriority": "2",
-  "workCenterCode": "WC-001",
-  "workCenterDescription": "Maintenance Department",
-  "centerCostCode": 100,
-  "workAreaCode": "WA-001",
-  "workAreaDescription": "Production Area A",
-  "sector": "Production",
-  "subsector": "Assembly",
-  "organizationCode": "ORG001",
-  "organizationName": "Main Plant",
-  "createdBy": "550e8400-e29b-41d4-a716-446655440001",
-  "createdByName": "John Doe",
-  "updatedBy": null,
-  "updatedByName": null,
-  "createdAt": "2025-11-21T08:00:00.000Z",
-  "updatedAt": "2025-11-21T08:00:00.000Z",
-  "actualStartDate": "2025-11-21T08:00:00.000Z",
-  "actualCompletionDate": "2025-11-21T17:00:00.000Z",
-  "actualHours": 12,
-  "totalManHours": 10,
-  "totalSupplierHours": 2,
-  "plannedHours": null,
-  "workRequestId": null,
-  "enableOracleWorkOrder": "N",
-  "oclWorkOrderId": null,
-  "oclWorkOrderNumber": null,
-  "releasedDate": null,
-  "closedDate": null,
-  "canceledDate": null,
-  "canceledReason": null,
-  "operations": [
-    {
-      "operationCode": 5001,
-      "operationName": "Lubrication",
-      "operationDescription": "Lubrication of all components",
-      "operationSeqNumber": 10,
-      "assetCode": "AST-001",
-      "assetShortDescription": "Hydraulic Pump Unit",
-      "operationStatus": "UNRELEASED",
-      "operationStatusLabel": "Unreleased",
-      "operationType": "Internal",
-      "operationSubType": "Preventive",
-      "actualStartDate": "2025-11-21T08:00:00.000Z",
-      "actualCompletionDate": "2025-11-21T11:00:00.000Z",
-      "actualHours": 3,
-      "workCenterCode": "WC-001",
-      "workCenterDescription": "Maintenance Department",
-      "workAreaCode": "WA-001",
-      "workAreaDescription": "Production Area A",
-      "organizationCode": "ORG001",
-      "organizationName": "Main Plant",
-      "createdBy": "550e8400-e29b-41d4-a716-446655440001",
-      "createdByName": "John Doe",
-      "createdAt": "2025-11-21T08:00:00.000Z",
-      "updatedAt": "2025-11-21T08:00:00.000Z",
-      "workOrderOperationResource": [
-        {
-          "id": 10001,
-          "resourceCode": "RES-001",
-          "resourceSequenceNumber": 1,
-          "plannedHours": 2,
-          "actualHours": 2,
-          "principalFlag": "Y",
-          "organizationCode": "ORG001",
-          "createdBy": "550e8400-e29b-41d4-a716-446655440001",
-          "createdByName": "John Doe",
-          "createdAt": "2025-11-21T08:00:00.000Z",
-          "updatedAt": "2025-11-21T08:00:00.000Z",
-          "transactedInOracle": "N",
-          "oclWoOperationResourceId": null,
-          "syncedToOracleAt": null
-        },
-        {
-          "id": 10002,
-          "resourceCode": "RES-002",
-          "resourceSequenceNumber": 1,
-          "plannedHours": 3,
-          "actualHours": 3,
-          "principalFlag": "N",
-          "organizationCode": "ORG001",
-          "createdBy": "550e8400-e29b-41d4-a716-446655440001",
-          "createdByName": "John Doe",
-          "createdAt": "2025-11-21T08:00:00.000Z",
-          "updatedAt": "2025-11-21T08:00:00.000Z",
-          "transactedInOracle": "N",
-          "oclWoOperationResourceId": null,
-          "syncedToOracleAt": null
-        }
-      ],
-      "workOrderOperationMaterial": [
-        {
-          "id": 20001,
-          "materialCode": "MAT-001",
-          "materialName": "Hydraulic Oil",
-          "materialSequenceNumber": 10,
-          "quantity": 1,
-          "supplyType": "1",
-          "unitCost": 25.0,
-          "totalCost": 25.0,
-          "organizationCode": "ORG001",
-          "createdBy": "550e8400-e29b-41d4-a716-446655440001",
-          "createdByName": "John Doe",
-          "createdAt": "2025-11-21T08:00:00.000Z",
-          "updatedAt": "2025-11-21T08:00:00.000Z",
-          "transactedInOracle": "N",
-          "oclWoOperationMaterialId": null,
-          "syncedToOracleAt": null
-        }
-      ]
-    },
-    {
-      "operationCode": 5002,
-      "operationName": "Inspection",
-      "operationDescription": "Visual inspection of components",
-      "operationSeqNumber": 20,
-      "assetCode": "AST-001",
-      "assetShortDescription": "Hydraulic Pump Unit",
-      "operationStatus": "UNRELEASED",
-      "operationStatusLabel": "Unreleased",
-      "operationType": "Internal",
-      "operationSubType": "Preventive",
-      "actualStartDate": "2025-11-21T11:00:00.000Z",
-      "actualCompletionDate": "2025-11-21T14:00:00.000Z",
-      "actualHours": 3,
-      "workCenterCode": "WC-001",
-      "workCenterDescription": "Maintenance Department",
-      "workAreaCode": "WA-001",
-      "workAreaDescription": "Production Area A",
-      "organizationCode": "ORG001",
-      "organizationName": "Main Plant",
-      "createdBy": "550e8400-e29b-41d4-a716-446655440001",
-      "createdByName": "John Doe",
-      "createdAt": "2025-11-21T08:00:00.000Z",
-      "updatedAt": "2025-11-21T08:00:00.000Z",
-      "workOrderOperationResource": [
-        {
-          "id": 10003,
-          "resourceCode": "RES-001",
-          "resourceSequenceNumber": 1,
-          "plannedHours": 2,
-          "actualHours": 2,
-          "principalFlag": "Y",
-          "organizationCode": "ORG001",
-          "createdBy": "550e8400-e29b-41d4-a716-446655440001",
-          "createdByName": "John Doe",
-          "createdAt": "2025-11-21T08:00:00.000Z",
-          "updatedAt": "2025-11-21T08:00:00.000Z",
-          "transactedInOracle": "N",
-          "oclWoOperationResourceId": null,
-          "syncedToOracleAt": null
-        },
-        {
-          "id": 10004,
-          "resourceCode": "RES-003",
-          "resourceSequenceNumber": 2,
-          "plannedHours": 1,
-          "actualHours": 1,
-          "principalFlag": "N",
-          "organizationCode": "ORG001",
-          "createdBy": "550e8400-e29b-41d4-a716-446655440001",
-          "createdByName": "John Doe",
-          "createdAt": "2025-11-21T08:00:00.000Z",
-          "updatedAt": "2025-11-21T08:00:00.000Z",
-          "transactedInOracle": "N",
-          "oclWoOperationResourceId": null,
-          "syncedToOracleAt": null
-        }
-      ],
-      "workOrderOperationMaterial": []
-    }
-  ]
+    "assetCode": "AST-001",
+    "assetShortDescription": "Hydraulic Pump Unit",
+    "woStatusCode": "UNRELEASED",
+    "woStatusLabel": "Unreleased",
+    "workOrderType": "Planned",
+    "workOrderSubType": "Preventive",
+    "workOrderPriority": "2",
+    "workCenterCode": "WC-001",
+    "workCenterDescription": "Maintenance Department",
+    "centerCostCode": 100,
+    "workAreaCode": "WA-001",
+    "workAreaDescription": "Production Area A",
+    "sector": "Production",
+    "subsector": "Assembly",
+    "organizationCode": "ORG001",
+    "organizationName": "Main Plant",
+    "createdBy": "550e8400-e29b-41d4-a716-446655440001",
+    "createdByName": "John Doe",
+    "updatedBy": null,
+    "updatedByName": null,
+    "createdAt": "2025-11-21T08:00:00.000Z",
+    "updatedAt": "2025-11-21T08:00:00.000Z",
+    "actualStartDate": "2025-11-21T08:00:00.000Z",
+    "actualCompletionDate": "2025-11-21T17:00:00.000Z",
+    "actualHours": 12,
+    "totalManHours": 10,
+    "totalSupplierHours": 2,
+    "plannedHours": null,
+    "workRequestId": null,
+    "enableOracleWorkOrder": "N",
+    "oclWorkOrderId": null,
+    "oclWorkOrderNumber": null,
+    "releasedDate": null,
+    "closedDate": null,
+    "canceledDate": null,
+    "canceledReason": null,
+    "operations": [
+      {
+        "operationCode": 5001,
+        "operationName": "Lubrication",
+        "operationDescription": "Lubrication of all components",
+        "operationSeqNumber": 10,
+        "assetCode": "AST-001",
+        "assetShortDescription": "Hydraulic Pump Unit",
+        "operationStatus": "UNRELEASED",
+        "operationStatusLabel": "Unreleased",
+        "operationType": "Internal",
+        "operationSubType": "Preventive",
+        "actualStartDate": "2025-11-21T08:00:00.000Z",
+        "actualCompletionDate": "2025-11-21T11:00:00.000Z",
+        "actualHours": 3,
+        "workCenterCode": "WC-001",
+        "workCenterDescription": "Maintenance Department",
+        "workAreaCode": "WA-001",
+        "workAreaDescription": "Production Area A",
+        "organizationCode": "ORG001",
+        "organizationName": "Main Plant",
+        "createdBy": "550e8400-e29b-41d4-a716-446655440001",
+        "createdByName": "John Doe",
+        "createdAt": "2025-11-21T08:00:00.000Z",
+        "updatedAt": "2025-11-21T08:00:00.000Z",
+        "workOrderOperationResource": [
+          {
+            "id": 10001,
+            "resourceCode": "RES-001",
+            "resourceSequenceNumber": 1,
+            "plannedHours": 2,
+            "actualHours": 2,
+            "principalFlag": "Y",
+            "organizationCode": "ORG001",
+            "createdBy": "550e8400-e29b-41d4-a716-446655440001",
+            "createdByName": "John Doe",
+            "createdAt": "2025-11-21T08:00:00.000Z",
+            "updatedAt": "2025-11-21T08:00:00.000Z",
+            "transactedInOracle": "N",
+            "oclWoOperationResourceId": null,
+            "syncedToOracleAt": null
+          },
+          {
+            "id": 10002,
+            "resourceCode": "RES-002",
+            "resourceSequenceNumber": 1,
+            "plannedHours": 3,
+            "actualHours": 3,
+            "principalFlag": "N",
+            "organizationCode": "ORG001",
+            "createdBy": "550e8400-e29b-41d4-a716-446655440001",
+            "createdByName": "John Doe",
+            "createdAt": "2025-11-21T08:00:00.000Z",
+            "updatedAt": "2025-11-21T08:00:00.000Z",
+            "transactedInOracle": "N",
+            "oclWoOperationResourceId": null,
+            "syncedToOracleAt": null
+          }
+        ],
+        "workOrderOperationMaterial": [
+          {
+            "id": 20001,
+            "materialCode": "MAT-001",
+            "materialName": "Hydraulic Oil",
+            "materialSequenceNumber": 10,
+            "quantity": 1,
+            "supplyType": "1",
+            "unitCost": 25.0,
+            "totalCost": 25.0,
+            "organizationCode": "ORG001",
+            "createdBy": "550e8400-e29b-41d4-a716-446655440001",
+            "createdByName": "John Doe",
+            "createdAt": "2025-11-21T08:00:00.000Z",
+            "updatedAt": "2025-11-21T08:00:00.000Z",
+            "transactedInOracle": "N",
+            "oclWoOperationMaterialId": null,
+            "syncedToOracleAt": null
+          }
+        ]
+      },
+      {
+        "operationCode": 5002,
+        "operationName": "Inspection",
+        "operationDescription": "Visual inspection of components",
+        "operationSeqNumber": 20,
+        "assetCode": "AST-001",
+        "assetShortDescription": "Hydraulic Pump Unit",
+        "operationStatus": "UNRELEASED",
+        "operationStatusLabel": "Unreleased",
+        "operationType": "Internal",
+        "operationSubType": "Preventive",
+        "actualStartDate": "2025-11-21T11:00:00.000Z",
+        "actualCompletionDate": "2025-11-21T14:00:00.000Z",
+        "actualHours": 3,
+        "workCenterCode": "WC-001",
+        "workCenterDescription": "Maintenance Department",
+        "workAreaCode": "WA-001",
+        "workAreaDescription": "Production Area A",
+        "organizationCode": "ORG001",
+        "organizationName": "Main Plant",
+        "createdBy": "550e8400-e29b-41d4-a716-446655440001",
+        "createdByName": "John Doe",
+        "createdAt": "2025-11-21T08:00:00.000Z",
+        "updatedAt": "2025-11-21T08:00:00.000Z",
+        "workOrderOperationResource": [
+          {
+            "id": 10003,
+            "resourceCode": "RES-001",
+            "resourceSequenceNumber": 1,
+            "plannedHours": 2,
+            "actualHours": 2,
+            "principalFlag": "Y",
+            "organizationCode": "ORG001",
+            "createdBy": "550e8400-e29b-41d4-a716-446655440001",
+            "createdByName": "John Doe",
+            "createdAt": "2025-11-21T08:00:00.000Z",
+            "updatedAt": "2025-11-21T08:00:00.000Z",
+            "transactedInOracle": "N",
+            "oclWoOperationResourceId": null,
+            "syncedToOracleAt": null
+          },
+          {
+            "id": 10004,
+            "resourceCode": "RES-003",
+            "resourceSequenceNumber": 2,
+            "plannedHours": 1,
+            "actualHours": 1,
+            "principalFlag": "N",
+            "organizationCode": "ORG001",
+            "createdBy": "550e8400-e29b-41d4-a716-446655440001",
+            "createdByName": "John Doe",
+            "createdAt": "2025-11-21T08:00:00.000Z",
+            "updatedAt": "2025-11-21T08:00:00.000Z",
+            "transactedInOracle": "N",
+            "oclWoOperationResourceId": null,
+            "syncedToOracleAt": null
+          }
+        ],
+        "workOrderOperationMaterial": []
+      }
+    ]
   }
 }
 ```
@@ -828,69 +832,273 @@ THEN the system SHALL return an internal server error response.
 
 ---
 
-## Corregir el código ya existente
+## Get Work Orders
 
-> ~~Esta sección documenta las discrepancias entre el spec y el código/schema actual del microservicio. Una vez que se apliquen las correcciones, esta sección puede ser eliminada.~~
->
-> **Todos los cambios listados en esta sección han sido implementados.**
+### Communication
 
-### Schema (Prisma) - Implementado
+NATS Pattern: `work.order.find.all` (via gateway)
 
-1. **Campos agregados a `MntWorkOrder`:**
-   - `enableOracleWorkOrder` (String, @db.Char(1), obligatorio)
-   - `totalManHours` (Float, optional)
-   - `totalSupplierHours` (Float, optional)
+Gateway endpoint: GET /mnt-work-order
 
-2. **Campos eliminados de `MntWoOperation`:**
-   - `clientOperationId` (eliminado)
+### Purpose
 
-3. **Campos eliminados de `MntOperationHumanResourceUsage`:**
-   - `usageRate` (eliminado)
+Retrieves Work Orders using dynamic filtering, sorting, and pagination.
 
-4. **Campo agregado a `MntWoOperation`:**
-   - `operationSubType` (String, @db.NVarChar(30))
+### Authentication & Authorization
 
-### DTOs - Implementado
+The endpoint requires:
 
-5. **`CreateWorkOrderDto`:** reescrito con campos obligatorios, validación de combinaciones type/subtype, y `operations` como array anidado opcional.
+- **Gateway Auth**: Valid authentication token delegated to the gateway.
 
-6. **`CreateWoOperationDto`:** nuevo DTO con campos requeridos y arrays anidados de resources y materials.
+#### Gateway-Injected Fields
 
-7. **`CreateWoOperationResourceDto`:** nuevo DTO para recursos dentro de operaciones.
+The gateway MUST inject the following fields into the NATS payload:
 
-8. **`CreateWoOperationMaterialDto`:** nuevo DTO para materiales dentro de operaciones.
+| Field            | Type     | Description                                                       |
+| ---------------- | -------- | ----------------------------------------------------------------- |
+| organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
+| userRoles        | string[] | Role codes from the user's assignments in the target organization |
 
-9. **`CreateOperationHrDto`:** actualizado - `operationCode` eliminado del DTO (se pasa en el payload del controller), campos requeridos validados.
+The microservice SHALL enforce tenant isolation and role-based access using the injected fields.
 
-10. **`CreateOperationMaterialDto`:** actualizado - `operationCode` eliminado del DTO (se pasa en el payload del controller), campos requeridos validados.
+### Request
 
-### Service - Implementado
+The query payload SHALL support:
 
-11. **`WorkOrdersService.create()`:** reescrito con validación completa, transacción, cálculos y creación anidada. Incluye validación de que `asset.organizationCode` coincida con el `organizationCode` inyectado por el gateway.
+- `filters`: array of filter objects `{ field, operator, value }`
+- `order`: array of sort criteria `[field, ASC|DESC]`
+- `limit`: maximum number of rows to return
+- `offset`: number of rows to skip
 
-### Status Transitions - Implementado
+Legacy query fields SHALL remain supported for backward compatibility:
 
-12. **Transiciones actualizadas:**
-    ```
-    UNRELEASED → ON_HOLD, RELEASED, CANCELED
-    RELEASED → COMPLETED, ON_HOLD, CANCELED
-    ON_HOLD → RELEASED, CANCELED
-    COMPLETED → CLOSED, RELEASED
-    CLOSED → []
-    CANCELED → []
-    PENDING_APPROVAL → UNRELEASED
-    ```
+- `assetCode`
+- `organizationCode`
+- `woStatusCode`
+- `workOrderType`
+- `workOrderSubType`
 
-### Policies - Implementado
+#### Supported Operators
 
-13. **`WorkOrderSubTypePolicy`:** validación de role → subType.
+| Operator | Description                         |
+| -------- | ----------------------------------- |
+| `eq`     | Equals                              |
+| `like`   | Contains / Partial match            |
+| `gt`     | Greater than (for numbers or dates) |
+| `lt`     | Less than (for numbers or dates)    |
+| `in`     | Belongs to list                     |
 
-14. **`OracleWorkOrderPolicy`:** validación de feature flag `ENABLE_ORACLE_WORK_ORDER_SYSTEM` + permisos Oracle + roles permitidos.
+#### Allowed Filter Fields
 
-### Architecture
+- `workOrderCode`
+- `assetCode`
+- `workOrderDescription`
+- `woStatusCode`
+- `workOrderType`
+- `workOrderSubType`
+- `organizationCode`
+- `workCenterCode`
+- `workAreaCode`
+- `createdAt`
+- `actualStartDate`
+- `actualCompletionDate`
+- `releasedDate`
+- `closedDate`
+- `canceledDate`
 
-15. **NATS Communication:**
-    - El gateway lee el header `X-Organization-Code` del request HTTP y valida que el usuario tenga acceso a esa organización
-    - El gateway inyecta `actorId`, `actorName`, `organizationCode`, `userPermissions` (string[]), y `userRoles` (string[]) en el payload NATS
-    - El microservicio valida que el asset pertenezca a la misma organización
-    - La respuesta incluye tanto UPPER_SNAKE_CASE como Title Case para status
+#### Example Request Payload
+
+```json
+{
+  "organizationCode": "ORG-BOG-001",
+  "userRoles": ["PLANNER_MAINTENANCE_01"],
+  "filters": [
+    {
+      "field": "woStatusCode",
+      "operator": "eq",
+      "value": "RELEASED"
+    },
+    {
+      "field": "assetCode",
+      "operator": "like",
+      "value": "AST-"
+    }
+  ],
+  "order": [["createdAt", "DESC"]],
+  "limit": 10,
+  "offset": 0
+}
+```
+
+### Validations
+
+**R-WO-GE-01**
+
+IF `organizationCode` is missing, empty, or invalid in the query payload,  
+THEN the system SHALL reject the request.
+
+**R-WO-GE-02**
+
+IF `filters`, `order`, `limit`, or `offset` have malformed structure or invalid values,  
+THEN the system SHALL reject the request with a 400 status and message `Invalid filter data`.
+
+**R-WO-GE-03**
+
+IF any filter uses an unsupported `field` or `operator`,  
+THEN the system SHALL reject the request with a 400 status and message `Invalid filter data`.
+
+**R-WO-GE-04**
+
+IF `limit` or `offset` is provided and is not a non-negative integer,  
+THEN the system SHALL reject the request with a 400 status and message `Invalid filter data`.
+
+**R-WO-GE-05**
+
+IF the user roles are not authorized to access a requested `workOrderSubType`,  
+THEN the system SHALL reject the request with a 403 status and error code `SUBTYPE_NOT_ALLOWED_FOR_ROLE`.
+
+### Processing
+
+**R-WO-GE-06**
+
+WHEN a valid query is received,  
+the system SHALL:
+
+1. Enforce organization isolation using injected `organizationCode`
+2. Enforce role-based sub-type access using injected `userRoles`
+3. Build dynamic query conditions from `filters` using AND logic
+4. Apply sort criteria from `order` (default: `createdAt DESC`, `workOrderCode DESC`)
+5. Apply pagination from `limit` and `offset`
+6. Return the list and total count of records matching the same WHERE condition
+
+### Response
+
+**R-WO-GE-07**
+
+WHEN the query executes successfully,  
+the system SHALL return:
+
+- `workOrders`: array of Work Orders
+- `total`: total number of records matching the query condition
+
+Each Work Order in `workOrders` SHALL include full nested data:
+
+- Work Order fields
+- All operations
+- All operation resources
+- All operation materials
+- `woStatusCode` and `woStatusLabel`
+- `operationStatus` and `operationStatusLabel`
+
+### Errors
+
+**R-WO-GE-08**
+
+IF no Work Orders match the query,  
+THEN the system SHALL return an empty array and `total = 0`.
+
+**R-WO-GE-09**
+
+IF the requester is not authorized for the organization context,  
+THEN the system SHALL return a 403 status.
+
+**R-WO-GE-10**
+
+IF an unexpected error occurs,  
+THEN the system SHALL return an internal server error response.
+
+---
+
+## Get Work Order By Code
+
+### Communication
+
+NATS Pattern: `work.order.find.one` (via gateway)
+
+Gateway endpoint: GET /mnt-work-order/:workOrderCode
+
+### Purpose
+
+Retrieves one Work Order by `workOrderCode` with full nested operational detail.
+
+### Authentication & Authorization
+
+The endpoint requires:
+
+- **Gateway Auth**: Valid authentication token delegated to the gateway.
+
+#### Gateway-Injected Fields
+
+The gateway MUST inject the following fields into the NATS payload:
+
+| Field            | Type     | Description                                                       |
+| ---------------- | -------- | ----------------------------------------------------------------- |
+| organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
+| userRoles        | string[] | Role codes from the user's assignments in the target organization |
+
+### Request
+
+Required payload fields:
+
+- `workOrderCode`
+- `organizationCode`
+- `userRoles`
+
+### Validations
+
+**R-WO-FO-01**
+
+IF `workOrderCode` is missing or invalid,  
+THEN the system SHALL reject the request.
+
+**R-WO-FO-02**
+
+IF `organizationCode` is missing, empty, or invalid,  
+THEN the system SHALL reject the request.
+
+**R-WO-FO-03**
+
+IF the user roles are not authorized to access the target Work Order sub-type,  
+THEN the system SHALL reject the request with a 403 status and error code `SUBTYPE_NOT_ALLOWED_FOR_ROLE`.
+
+### Processing
+
+**R-WO-FO-04**
+
+WHEN a valid request is received,  
+the system SHALL:
+
+1. Find the Work Order by `workOrderCode`
+2. Validate organization ownership against injected `organizationCode`
+3. Validate role-based access to the Work Order sub-type
+4. Load all related operations, resources, and materials
+5. Return the mapped response including status labels and BigInt string serialization
+
+### Response
+
+**R-WO-FO-05**
+
+WHEN the Work Order is found and access is allowed,  
+the system SHALL return a `workOrder` object including:
+
+- All Work Order fields
+- `woStatusCode` and `woStatusLabel`
+- All operations with `operationStatus` and `operationStatusLabel`
+- All resources and materials
+
+### Errors
+
+**R-WO-FO-06**
+
+IF the Work Order does not exist,  
+THEN the system SHALL return a 404 status with message `Work order not found`.
+
+**R-WO-FO-07**
+
+IF the Work Order exists but belongs to a different organization,  
+THEN the system SHALL return a 403 status with error code `ORGANIZATION_MISMATCH`.
+
+**R-WO-FO-08**
+
+IF an unexpected error occurs,  
+THEN the system SHALL return an internal server error response.
