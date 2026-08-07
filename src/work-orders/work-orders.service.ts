@@ -1,21 +1,77 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { RpcException } from '@nestjs/microservices';
-import { PrismaService } from 'src/prisma.service';
-import { CreateWorkOrderMessageDto, UpdateWorkOrderDto, FindAllWorkOrderDto, isValidTypeSubtypeCombination } from './dto';
-import { WO_STATUS, isValidWoTransition, OP_STATUS, isOperationStatusCompatible } from 'src/common/enums';
-import { WorkOrderSubTypePolicy, OracleWorkOrderPolicy } from './policies';
+import { Injectable, Logger } from "@nestjs/common";
+import { RpcException } from "@nestjs/microservices";
+import type { Prisma } from "generated/prisma/client";
+import { PrismaService } from "src/prisma.service";
+import {
+  CreateWorkOrderMessageDto,
+  UpdateWorkOrderDto,
+  FindAllWorkOrderDto,
+  WorkOrderCodeDto,
+  WorkOrderFilterDto,
+  isValidTypeSubtypeCombination,
+} from "./dto";
+import {
+  WO_STATUS,
+  isValidWoTransition,
+  OP_STATUS,
+  isOperationStatusCompatible,
+} from "src/common/enums";
+import { WorkOrderSubTypePolicy, OracleWorkOrderPolicy } from "./policies";
+
+const INVALID_FILTER_DATA_MESSAGE = "Invalid filter data";
+const FIND_ALL_FILTER_FIELDS = new Set([
+  "workOrderCode",
+  "assetCode",
+  "workOrderDescription",
+  "woStatusCode",
+  "workOrderType",
+  "workOrderSubType",
+  "organizationCode",
+  "workCenterCode",
+  "workAreaCode",
+  "createdAt",
+  "actualStartDate",
+  "actualCompletionDate",
+  "releasedDate",
+  "closedDate",
+  "canceledDate",
+]);
+
+const STRING_FIELDS = new Set([
+  "assetCode",
+  "workOrderDescription",
+  "woStatusCode",
+  "workOrderType",
+  "workOrderSubType",
+  "organizationCode",
+  "workCenterCode",
+  "workAreaCode",
+]);
+
+const DATE_FIELDS = new Set([
+  "createdAt",
+  "actualStartDate",
+  "actualCompletionDate",
+  "releasedDate",
+  "closedDate",
+  "canceledDate",
+]);
+
+type WorkOrderFilterOperator = "eq" | "like" | "gt" | "lt" | "in";
 
 const VALID_OP_STATUSES = Object.values(OP_STATUS);
 
 function toTitleCase(str: string): string {
   return str
-    .split('_')
+    .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
+    .join(" ");
 }
 
 function isValidUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value,
+  );
 }
 
 function isValidIsoDate(value: string): boolean {
@@ -35,7 +91,9 @@ export class WorkOrdersService {
 
   async create(dto: CreateWorkOrderMessageDto) {
     try {
-      if (!isValidTypeSubtypeCombination(dto.workOrderType, dto.workOrderSubType)) {
+      if (
+        !isValidTypeSubtypeCombination(dto.workOrderType, dto.workOrderSubType)
+      ) {
         throw new RpcException({
           status: 400,
           message: `Invalid combination of workOrderType "${dto.workOrderType}" and workOrderSubType "${dto.workOrderSubType}"`,
@@ -49,33 +107,44 @@ export class WorkOrdersService {
         });
       }
 
-      const oracleCheck = this.oraclePolicy.validate(dto.userPermissions, dto.userRoles);
-      if (dto.enableOracleWorkOrder === 'Y' && !oracleCheck.valid) {
+      const oracleCheck = this.oraclePolicy.validate(
+        dto.userPermissions,
+        dto.userRoles,
+      );
+      if (dto.enableOracleWorkOrder === "Y" && !oracleCheck.valid) {
         throw new RpcException({
           status: 403,
           message: oracleCheck.error,
         });
       }
 
-      if (!this.subtypePolicy.canCreateSubType(dto.userRoles, dto.workOrderSubType)) {
+      if (
+        !this.subtypePolicy.canCreateSubType(
+          dto.userRoles,
+          dto.workOrderSubType,
+        )
+      ) {
         throw new RpcException({
           status: 403,
-          message: 'SUBTYPE_NOT_ALLOWED_FOR_ROLE',
+          message: "SUBTYPE_NOT_ALLOWED_FOR_ROLE",
         });
       }
 
       const asset = await this.prisma.mntAsset.findFirst({
-        where: { assetCode: dto.assetCode, isActive: 'Y' },
+        where: { assetCode: dto.assetCode, isActive: "Y" },
       });
 
       if (!asset) {
-        throw new RpcException({ status: 404, message: 'Asset not found or inactive' });
+        throw new RpcException({
+          status: 404,
+          message: "Asset not found or inactive",
+        });
       }
 
       if (asset.organizationCode !== dto.organizationCode) {
         throw new RpcException({
           status: 403,
-          message: 'ORGANIZATION_MISMATCH',
+          message: "ORGANIZATION_MISMATCH",
         });
       }
 
@@ -84,7 +153,10 @@ export class WorkOrdersService {
           where: { requestId: BigInt(dto.workRequestId) },
         });
         if (!wr) {
-          throw new RpcException({ status: 404, message: 'Work request not found' });
+          throw new RpcException({
+            status: 404,
+            message: "Work request not found",
+          });
         }
       }
 
@@ -95,22 +167,22 @@ export class WorkOrdersService {
         const oneHourLater = new Date(now.getTime() + 3600000);
         operations = [
           {
-            operationName: 'DEFAULT_OPERATION',
-            operationDescription: 'Auto-generated default operation',
+            operationName: "DEFAULT_OPERATION",
+            operationDescription: "Auto-generated default operation",
             operationSeqNumber: 1,
             createdBy: dto.actorId,
-            operationStatus: 'UNRELEASED',
-            operationType: 'Internal',
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
             operationSubType: dto.workOrderSubType,
             actualStartDate: now.toISOString(),
             actualCompletionDate: oneHourLater.toISOString(),
             workOrderOperationResource: [
               {
-                resourceCode: 'DEFAULT_RESOURCE',
+                resourceCode: "DEFAULT_RESOURCE",
                 resourceSequenceNumber: 0,
                 plannedHours: 1,
                 actualHours: 1,
-                principalFlag: 'N',
+                principalFlag: "N",
               },
             ],
           },
@@ -125,7 +197,10 @@ export class WorkOrdersService {
           });
         }
 
-        if (!isValidIsoDate(op.actualStartDate) || !isValidIsoDate(op.actualCompletionDate)) {
+        if (
+          !isValidIsoDate(op.actualStartDate) ||
+          !isValidIsoDate(op.actualCompletionDate)
+        ) {
           throw new RpcException({
             status: 400,
             message: `Operation "${op.operationName}" has invalid ISO 8601 date fields`,
@@ -162,7 +237,10 @@ export class WorkOrdersService {
           });
         }
 
-        if (op.operationType !== 'Internal' && op.operationType !== 'Supplier') {
+        if (
+          op.operationType !== "Internal" &&
+          op.operationType !== "Supplier"
+        ) {
           throw new RpcException({
             status: 400,
             message: `Operation "${op.operationName}" operationType must be "Internal" or "Supplier"`,
@@ -176,7 +254,10 @@ export class WorkOrdersService {
           });
         }
 
-        if (!op.workOrderOperationResource || op.workOrderOperationResource.length === 0) {
+        if (
+          !op.workOrderOperationResource ||
+          op.workOrderOperationResource.length === 0
+        ) {
           throw new RpcException({
             status: 400,
             message: `Operation "${op.operationName}" must have at least one resource`,
@@ -196,7 +277,10 @@ export class WorkOrdersService {
               message: `Operation "${op.operationName}" resource "${res.resourceCode}" actualHours must be greater than 0`,
             });
           }
-          if (res.resourceSequenceNumber < 0 || !Number.isInteger(res.resourceSequenceNumber)) {
+          if (
+            res.resourceSequenceNumber < 0 ||
+            !Number.isInteger(res.resourceSequenceNumber)
+          ) {
             throw new RpcException({
               status: 400,
               message: `Operation "${op.operationName}" resource "${res.resourceCode}" resourceSequenceNumber must be a non-negative integer`,
@@ -210,11 +294,14 @@ export class WorkOrdersService {
       if (uniqueSeqs.size !== seqNumbers.length) {
         throw new RpcException({
           status: 400,
-          message: 'Duplicate operationSeqNumber found. Each operation must have a unique sequence number',
+          message:
+            "Duplicate operationSeqNumber found. Each operation must have a unique sequence number",
         });
       }
 
-      const sortedOps = [...operations].sort((a, b) => a.operationSeqNumber - b.operationSeqNumber);
+      const sortedOps = [...operations].sort(
+        (a, b) => a.operationSeqNumber - b.operationSeqNumber,
+      );
       for (let i = 1; i < sortedOps.length; i++) {
         const prevStart = new Date(sortedOps[i - 1].actualStartDate);
         const currStart = new Date(sortedOps[i].actualStartDate);
@@ -227,7 +314,9 @@ export class WorkOrdersService {
       }
 
       for (const op of operations) {
-        if (!isOperationStatusCompatible(dto.woStatusCode, op.operationStatus)) {
+        if (
+          !isOperationStatusCompatible(dto.woStatusCode, op.operationStatus)
+        ) {
           throw new RpcException({
             status: 400,
             message: `Operation "${op.operationName}" status "${op.operationStatus}" is not compatible with work order status "${dto.woStatusCode}"`,
@@ -251,7 +340,9 @@ export class WorkOrdersService {
         }
 
         const startDate = new Date(op.actualStartDate);
-        const calculatedCompletionDate = new Date(startDate.getTime() + calculatedActualHours * 3600000);
+        const calculatedCompletionDate = new Date(
+          startDate.getTime() + calculatedActualHours * 3600000,
+        );
 
         return {
           ...op,
@@ -270,7 +361,7 @@ export class WorkOrdersService {
         woActualHours += op.calculatedActualHours;
 
         for (const res of op.workOrderOperationResource) {
-          if (op.operationType === 'Internal') {
+          if (op.operationType === "Internal") {
             totalManHours += res.actualHours;
           } else {
             totalSupplierHours += res.actualHours;
@@ -368,7 +459,7 @@ export class WorkOrdersService {
                 plannedHours: res.plannedHours,
                 actualHours: res.actualHours,
                 hourlyCost: res.hourlyCost,
-                principalFlag: res.principalFlag ?? 'N',
+                principalFlag: res.principalFlag ?? "N",
                 resourceSequenceNumber: res.resourceSequenceNumber,
                 plannedStartDate: res.plannedStartDate,
                 plannedCompletionDate: res.plannedCompletionDate,
@@ -378,7 +469,10 @@ export class WorkOrdersService {
             });
           }
 
-          if (op.workOrderOperationMaterial && op.workOrderOperationMaterial.length > 0) {
+          if (
+            op.workOrderOperationMaterial &&
+            op.workOrderOperationMaterial.length > 0
+          ) {
             for (const mat of op.workOrderOperationMaterial) {
               await tx.mntOperationMaterialUsage.create({
                 data: {
@@ -386,7 +480,7 @@ export class WorkOrdersService {
                   organizationCode: asset.organizationCode,
                   materialCode: mat.materialCode,
                   quantity: mat.quantity,
-                  supplyType: mat.supplyType ?? '1',
+                  supplyType: mat.supplyType ?? "1",
                   materialSequenceNumber: mat.materialSequenceNumber,
                   createdBy: dto.actorId,
                   createdByName: dto.actorName,
@@ -416,7 +510,7 @@ export class WorkOrdersService {
       return { workOrder: response };
     } catch (error) {
       if (error instanceof RpcException) throw error;
-      throw new RpcException({ status: 500, message: 'Internal server error' });
+      throw new RpcException({ status: 500, message: "Internal server error" });
     }
   }
 
@@ -497,7 +591,8 @@ export class WorkOrdersService {
           createdAt: hr.createdAt,
           updatedAt: hr.updatedAt,
           transactedInOracle: hr.transactedInOracle,
-          oclWoOperationResourceId: hr.oclWoOperationResourceId?.toString() ?? null,
+          oclWoOperationResourceId:
+            hr.oclWoOperationResourceId?.toString() ?? null,
           syncedToOracleAt: hr.syncedToOracleAt,
         })),
         workOrderOperationMaterial: op.materialUsages?.map((mat: any) => ({
@@ -515,17 +610,20 @@ export class WorkOrdersService {
           createdAt: mat.createdAt,
           updatedAt: mat.updatedAt,
           transactedInOracle: mat.transactedInOracle,
-          oclWoOperationMaterialId: mat.oclWoOperationMaterialId?.toString() ?? null,
+          oclWoOperationMaterialId:
+            mat.oclWoOperationMaterialId?.toString() ?? null,
           syncedToOracleAt: mat.syncedToOracleAt,
         })),
       })),
     };
   }
 
-  async findOne(workOrderCode: number) {
+  async findOne(dto: WorkOrderCodeDto) {
     try {
+      this.validateReadContext(dto);
+
       const workOrder = await this.prisma.mntWorkOrder.findFirst({
-        where: { workOrderCode: BigInt(workOrderCode) },
+        where: { workOrderCode: BigInt(String(dto.workOrderCode)) },
         include: {
           woOperations: {
             include: {
@@ -537,43 +635,350 @@ export class WorkOrdersService {
       });
 
       if (!workOrder) {
-        throw new RpcException({ status: 404, message: 'Work order not found' });
+        throw new RpcException({
+          status: 404,
+          message: "Work order not found",
+        });
+      }
+
+      if (workOrder.organizationCode !== dto.organizationCode) {
+        throw new RpcException({
+          status: 403,
+          message: "ORGANIZATION_MISMATCH",
+        });
+      }
+
+      if (!this.canAccessSubType(dto.userRoles, workOrder.workOrderSubType)) {
+        throw new RpcException({
+          status: 403,
+          message: "SUBTYPE_NOT_ALLOWED_FOR_ROLE",
+        });
       }
 
       return { workOrder: this.mapToResponse(workOrder) };
     } catch (error) {
       if (error instanceof RpcException) throw error;
-      throw new RpcException({ status: 500, message: 'Internal server error' });
+      throw new RpcException({ status: 500, message: "Internal server error" });
     }
   }
 
   async findAll(dto: FindAllWorkOrderDto) {
     try {
-      const workOrders = await this.prisma.mntWorkOrder.findMany({
-        where: {
-          ...(dto.assetCode ? { assetCode: { contains: dto.assetCode } } : {}),
-          ...(dto.organizationCode ? { organizationCode: { contains: dto.organizationCode } } : {}),
-          ...(dto.woStatusCode ? { woStatusCode: dto.woStatusCode } : {}),
-          ...(dto.workOrderType ? { workOrderType: dto.workOrderType } : {}),
-          ...(dto.workOrderSubType ? { workOrderSubType: dto.workOrderSubType } : {}),
-        },
-        orderBy: { createdAt: 'desc' },
-      });
+      this.validateReadContext(dto);
 
-      return { workOrders, total: workOrders.length };
+      const where = this.buildFindAllWhere(dto);
+      const orderBy = this.buildFindAllOrder(dto.order);
+      const take = this.parsePaginationValue(dto.limit);
+      const skip = this.parsePaginationValue(dto.offset);
+
+      const [workOrders, total] = await this.prisma.$transaction([
+        this.prisma.mntWorkOrder.findMany({
+          where,
+          orderBy,
+          take,
+          skip,
+          include: {
+            woOperations: {
+              include: {
+                hrUsages: true,
+                materialUsages: true,
+              },
+            },
+          },
+        }),
+        this.prisma.mntWorkOrder.count({ where }),
+      ]);
+
+      return {
+        workOrders: workOrders.map((wo) => this.mapToResponse(wo)),
+        total,
+      };
     } catch (error) {
-      throw new RpcException({ status: 500, message: 'Internal server error' });
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({ status: 500, message: "Internal server error" });
     }
   }
 
-  async update(dto: UpdateWorkOrderDto & { workOrderCode: number; actorId: string; actorName: string }) {
+  private validateReadContext(dto: {
+    organizationCode?: string;
+    userRoles?: string[];
+  }) {
+    if (
+      typeof dto.organizationCode !== "string" ||
+      dto.organizationCode.trim().length === 0
+    ) {
+      throw new RpcException({
+        status: 400,
+        message: "organizationCode is required",
+      });
+    }
+
+    if (
+      !Array.isArray(dto.userRoles) ||
+      dto.userRoles.some(
+        (role) => typeof role !== "string" || role.trim().length === 0,
+      )
+    ) {
+      throw new RpcException({
+        status: 400,
+        message: "userRoles must be a non-empty array",
+      });
+    }
+  }
+
+  private canAccessSubType(
+    userRoles: string[] | undefined,
+    workOrderSubType: string,
+  ): boolean {
+    if (!userRoles || userRoles.length === 0) {
+      return false;
+    }
+
+    return userRoles.some((role) =>
+      this.subtypePolicy.canCreateSubType([role], workOrderSubType),
+    );
+  }
+
+  private buildFindAllWhere(
+    dto: FindAllWorkOrderDto,
+  ): Prisma.MntWorkOrderWhereInput {
+    const conditions: Prisma.MntWorkOrderWhereInput[] = [];
+
+    if (dto.organizationCode) {
+      conditions.push({ organizationCode: dto.organizationCode });
+    }
+
+    if (dto.assetCode) {
+      conditions.push({ assetCode: { contains: dto.assetCode } });
+    }
+
+    if (dto.woStatusCode) {
+      conditions.push({ woStatusCode: dto.woStatusCode });
+    }
+
+    if (dto.workOrderType) {
+      conditions.push({ workOrderType: dto.workOrderType });
+    }
+
+    if (dto.workOrderSubType) {
+      if (!this.canAccessSubType(dto.userRoles, dto.workOrderSubType)) {
+        throw new RpcException({
+          status: 403,
+          message: "SUBTYPE_NOT_ALLOWED_FOR_ROLE",
+        });
+      }
+      conditions.push({ workOrderSubType: dto.workOrderSubType });
+    } else {
+      const allowedSubTypes = this.getAllowedSubTypes(dto.userRoles ?? []);
+      if (allowedSubTypes.length > 0) {
+        conditions.push({ workOrderSubType: { in: allowedSubTypes } });
+      }
+    }
+
+    if (dto.filters) {
+      if (!Array.isArray(dto.filters)) {
+        throw this.invalidFilterDataException();
+      }
+
+      const filters = dto.filters.map((filter) =>
+        this.mapFilterToWhereCondition(filter, dto.userRoles),
+      );
+      conditions.push(...filters);
+    }
+
+    return conditions.length > 0 ? { AND: conditions } : {};
+  }
+
+  private buildFindAllOrder(
+    order: FindAllWorkOrderDto["order"],
+  ): Prisma.MntWorkOrderOrderByWithRelationInput[] {
+    if (order === undefined) {
+      return [{ createdAt: "desc" }, { workOrderCode: "desc" }];
+    }
+
+    if (!Array.isArray(order)) {
+      throw this.invalidFilterDataException();
+    }
+
+    const mapped = order.map((criterion) => {
+      if (!Array.isArray(criterion) || criterion.length !== 2) {
+        throw this.invalidFilterDataException();
+      }
+
+      const [rawField, rawDirection] = criterion;
+      if (
+        typeof rawField !== "string" ||
+        !FIND_ALL_FILTER_FIELDS.has(rawField) ||
+        typeof rawDirection !== "string"
+      ) {
+        throw this.invalidFilterDataException();
+      }
+
+      const direction = rawDirection.toLowerCase();
+      if (direction !== "asc" && direction !== "desc") {
+        throw this.invalidFilterDataException();
+      }
+
+      return {
+        [rawField]: direction,
+      } as Prisma.MntWorkOrderOrderByWithRelationInput;
+    });
+
+    return mapped.length > 0
+      ? mapped
+      : [{ createdAt: "desc" }, { workOrderCode: "desc" }];
+  }
+
+  private parsePaginationValue(value?: number): number | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    if (!Number.isInteger(value) || value < 0) {
+      throw this.invalidFilterDataException();
+    }
+
+    return value;
+  }
+
+  private mapFilterToWhereCondition(
+    filter: WorkOrderFilterDto,
+    userRoles?: string[],
+  ): Prisma.MntWorkOrderWhereInput {
+    if (!filter || typeof filter !== "object") {
+      throw this.invalidFilterDataException();
+    }
+
+    const { field, operator, value } = filter;
+
+    if (
+      typeof field !== "string" ||
+      !FIND_ALL_FILTER_FIELDS.has(field) ||
+      typeof operator !== "string"
+    ) {
+      throw this.invalidFilterDataException();
+    }
+
+    if (
+      field === "workOrderSubType" &&
+      typeof value === "string" &&
+      !this.canAccessSubType(userRoles, value)
+    ) {
+      throw new RpcException({
+        status: 403,
+        message: "SUBTYPE_NOT_ALLOWED_FOR_ROLE",
+      });
+    }
+
+    const normalizedOperator =
+      operator.toLowerCase() as WorkOrderFilterOperator;
+
+    switch (normalizedOperator) {
+      case "eq": {
+        const normalizedValue = this.normalizeFieldValue(field, value);
+        return { [field]: normalizedValue } as Prisma.MntWorkOrderWhereInput;
+      }
+      case "like": {
+        if (!STRING_FIELDS.has(field) || typeof value !== "string") {
+          throw this.invalidFilterDataException();
+        }
+        return {
+          [field]: { contains: value },
+        } as Prisma.MntWorkOrderWhereInput;
+      }
+      case "gt": {
+        const normalizedValue = this.normalizeFieldValue(field, value);
+        return {
+          [field]: { gt: normalizedValue },
+        } as Prisma.MntWorkOrderWhereInput;
+      }
+      case "lt": {
+        const normalizedValue = this.normalizeFieldValue(field, value);
+        return {
+          [field]: { lt: normalizedValue },
+        } as Prisma.MntWorkOrderWhereInput;
+      }
+      case "in": {
+        if (!Array.isArray(value)) {
+          throw this.invalidFilterDataException();
+        }
+        const normalizedValues = value.map((item) =>
+          this.normalizeFieldValue(field, item),
+        );
+        return {
+          [field]: { in: normalizedValues },
+        } as Prisma.MntWorkOrderWhereInput;
+      }
+      default:
+        throw this.invalidFilterDataException();
+    }
+  }
+
+  private normalizeFieldValue(field: string, value: unknown) {
+    if (field === "workOrderCode") {
+      return BigInt(String(value));
+    }
+
+    if (DATE_FIELDS.has(field)) {
+      if (value instanceof Date) {
+        return value;
+      }
+      return new Date(String(value));
+    }
+
+    return value;
+  }
+
+  private getAllowedSubTypes(userRoles: string[]): string[] {
+    const allowed = new Set<string>();
+    for (const role of userRoles) {
+      const roleAllowed = this.subtypePolicy.canCreateSubType(
+        [role],
+        "Preventive",
+      );
+      if (roleAllowed) {
+        allowed.add("Preventive");
+      }
+      if (this.subtypePolicy.canCreateSubType([role], "Corrective")) {
+        allowed.add("Corrective");
+      }
+      if (this.subtypePolicy.canCreateSubType([role], "Emergency")) {
+        allowed.add("Emergency");
+      }
+      if (this.subtypePolicy.canCreateSubType([role], "Inspection")) {
+        allowed.add("Inspection");
+      }
+      if (this.subtypePolicy.canCreateSubType([role], "TPM")) {
+        allowed.add("TPM");
+      }
+    }
+    return Array.from(allowed);
+  }
+
+  private invalidFilterDataException() {
+    return new RpcException({
+      status: 400,
+      message: INVALID_FILTER_DATA_MESSAGE,
+    });
+  }
+
+  async update(
+    dto: UpdateWorkOrderDto & {
+      workOrderCode: number;
+      actorId: string;
+      actorName: string;
+    },
+  ) {
     try {
       const existing = await this.prisma.mntWorkOrder.findFirst({
         where: { workOrderCode: BigInt(dto.workOrderCode) },
       });
 
       if (!existing) {
-        throw new RpcException({ status: 404, message: 'Work order not found' });
+        throw new RpcException({
+          status: 404,
+          message: "Work order not found",
+        });
       }
 
       if (dto.woStatusCode && existing.woStatusCode !== dto.woStatusCode) {
@@ -588,19 +993,45 @@ export class WorkOrdersService {
       const updated = await this.prisma.mntWorkOrder.update({
         where: { workOrderCode: BigInt(dto.workOrderCode) },
         data: {
-          ...(dto.workOrderDescription !== undefined ? { workOrderDescription: dto.workOrderDescription } : {}),
-          ...(dto.workOrderType !== undefined ? { workOrderType: dto.workOrderType } : {}),
-          ...(dto.workOrderSubType !== undefined ? { workOrderSubType: dto.workOrderSubType } : {}),
-          ...(dto.workOrderPriority !== undefined ? { workOrderPriority: dto.workOrderPriority } : {}),
-          ...(dto.woStatusCode !== undefined ? { woStatusCode: dto.woStatusCode } : {}),
-          ...(dto.plannedStartDate !== undefined ? { plannedStartDate: dto.plannedStartDate } : {}),
-          ...(dto.plannedCompletionDate !== undefined ? { plannedCompletionDate: dto.plannedCompletionDate } : {}),
-          ...(dto.plannedHours !== undefined ? { plannedHours: dto.plannedHours } : {}),
-          ...(dto.actualStartDate !== undefined ? { actualStartDate: dto.actualStartDate } : {}),
-          ...(dto.actualCompletionDate !== undefined ? { actualCompletionDate: dto.actualCompletionDate } : {}),
-          ...(dto.actualHours !== undefined ? { actualHours: dto.actualHours } : {}),
-          ...(dto.canceledReason !== undefined ? { canceledReason: dto.canceledReason } : {}),
-          ...(dto.needByDate !== undefined ? { needByDate: dto.needByDate } : {}),
+          ...(dto.workOrderDescription !== undefined
+            ? { workOrderDescription: dto.workOrderDescription }
+            : {}),
+          ...(dto.workOrderType !== undefined
+            ? { workOrderType: dto.workOrderType }
+            : {}),
+          ...(dto.workOrderSubType !== undefined
+            ? { workOrderSubType: dto.workOrderSubType }
+            : {}),
+          ...(dto.workOrderPriority !== undefined
+            ? { workOrderPriority: dto.workOrderPriority }
+            : {}),
+          ...(dto.woStatusCode !== undefined
+            ? { woStatusCode: dto.woStatusCode }
+            : {}),
+          ...(dto.plannedStartDate !== undefined
+            ? { plannedStartDate: dto.plannedStartDate }
+            : {}),
+          ...(dto.plannedCompletionDate !== undefined
+            ? { plannedCompletionDate: dto.plannedCompletionDate }
+            : {}),
+          ...(dto.plannedHours !== undefined
+            ? { plannedHours: dto.plannedHours }
+            : {}),
+          ...(dto.actualStartDate !== undefined
+            ? { actualStartDate: dto.actualStartDate }
+            : {}),
+          ...(dto.actualCompletionDate !== undefined
+            ? { actualCompletionDate: dto.actualCompletionDate }
+            : {}),
+          ...(dto.actualHours !== undefined
+            ? { actualHours: dto.actualHours }
+            : {}),
+          ...(dto.canceledReason !== undefined
+            ? { canceledReason: dto.canceledReason }
+            : {}),
+          ...(dto.needByDate !== undefined
+            ? { needByDate: dto.needByDate }
+            : {}),
           updatedBy: dto.actorId,
           updatedByName: dto.actorName,
           updatedAt: new Date(),
@@ -610,7 +1041,7 @@ export class WorkOrdersService {
       return { workOrder: updated };
     } catch (error) {
       if (error instanceof RpcException) throw error;
-      throw new RpcException({ status: 500, message: 'Internal server error' });
+      throw new RpcException({ status: 500, message: "Internal server error" });
     }
   }
 
@@ -621,7 +1052,10 @@ export class WorkOrdersService {
       });
 
       if (!existing) {
-        throw new RpcException({ status: 404, message: 'Work order not found' });
+        throw new RpcException({
+          status: 404,
+          message: "Work order not found",
+        });
       }
 
       if (!isValidWoTransition(existing.woStatusCode, WO_STATUS.RELEASED)) {
@@ -650,7 +1084,7 @@ export class WorkOrdersService {
       return { workOrder: updated };
     } catch (error) {
       if (error instanceof RpcException) throw error;
-      throw new RpcException({ status: 500, message: 'Internal server error' });
+      throw new RpcException({ status: 500, message: "Internal server error" });
     }
   }
 
@@ -661,7 +1095,10 @@ export class WorkOrdersService {
       });
 
       if (!existing) {
-        throw new RpcException({ status: 404, message: 'Work order not found' });
+        throw new RpcException({
+          status: 404,
+          message: "Work order not found",
+        });
       }
 
       if (!isValidWoTransition(existing.woStatusCode, WO_STATUS.COMPLETED)) {
@@ -690,7 +1127,7 @@ export class WorkOrdersService {
       return { workOrder: updated };
     } catch (error) {
       if (error instanceof RpcException) throw error;
-      throw new RpcException({ status: 500, message: 'Internal server error' });
+      throw new RpcException({ status: 500, message: "Internal server error" });
     }
   }
 
@@ -701,7 +1138,10 @@ export class WorkOrdersService {
       });
 
       if (!existing) {
-        throw new RpcException({ status: 404, message: 'Work order not found' });
+        throw new RpcException({
+          status: 404,
+          message: "Work order not found",
+        });
       }
 
       if (!isValidWoTransition(existing.woStatusCode, WO_STATUS.CLOSED)) {
@@ -725,18 +1165,26 @@ export class WorkOrdersService {
       return { workOrder: updated };
     } catch (error) {
       if (error instanceof RpcException) throw error;
-      throw new RpcException({ status: 500, message: 'Internal server error' });
+      throw new RpcException({ status: 500, message: "Internal server error" });
     }
   }
 
-  async cancel(workOrderCode: number, actorId: string, actorName: string, canceledReason?: string) {
+  async cancel(
+    workOrderCode: number,
+    actorId: string,
+    actorName: string,
+    canceledReason?: string,
+  ) {
     try {
       const existing = await this.prisma.mntWorkOrder.findFirst({
         where: { workOrderCode: BigInt(workOrderCode) },
       });
 
       if (!existing) {
-        throw new RpcException({ status: 404, message: 'Work order not found' });
+        throw new RpcException({
+          status: 404,
+          message: "Work order not found",
+        });
       }
 
       if (!isValidWoTransition(existing.woStatusCode, WO_STATUS.CANCELED)) {
@@ -766,7 +1214,7 @@ export class WorkOrdersService {
       return { workOrder: updated };
     } catch (error) {
       if (error instanceof RpcException) throw error;
-      throw new RpcException({ status: 500, message: 'Internal server error' });
+      throw new RpcException({ status: 500, message: "Internal server error" });
     }
   }
 }
