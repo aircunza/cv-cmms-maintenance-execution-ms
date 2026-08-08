@@ -1,6 +1,10 @@
-import { IsString, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsOptional, MaxLength, IsIn } from 'class-validator';
 
 export class UpdateWorkOrderDto {
+  @IsString()
+  @IsIn(['Y', 'N'])
+  enableOracleWorkOrder: string;
+
   @IsString()
   @IsOptional()
   @MaxLength(240)
@@ -18,37 +22,6 @@ export class UpdateWorkOrderDto {
 
   @IsString()
   @IsOptional()
-  @MaxLength(30)
+  @IsIn(['1', '2', '3', '4'])
   workOrderPriority?: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(30)
-  woStatusCode?: string;
-
-  @IsOptional()
-  plannedStartDate?: Date;
-
-  @IsOptional()
-  plannedCompletionDate?: Date;
-
-  @IsOptional()
-  plannedHours?: number;
-
-  @IsOptional()
-  actualStartDate?: Date;
-
-  @IsOptional()
-  actualCompletionDate?: Date;
-
-  @IsOptional()
-  actualHours?: number;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(240)
-  canceledReason?: string;
-
-  @IsOptional()
-  needByDate?: Date;
 }

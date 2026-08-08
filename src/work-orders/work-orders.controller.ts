@@ -31,7 +31,10 @@ export class WorkOrdersController {
   update(
     @Payload()
     dto: UpdateWorkOrderDto & {
-      workOrderCode: number;
+      workOrderCode: number | string;
+      organizationCode: string;
+      userPermissions: string[];
+      userRoles: string[];
       actorId: string;
       actorName: string;
     },
@@ -43,13 +46,17 @@ export class WorkOrdersController {
   release(
     @Payload()
     dto: {
-      workOrderCode: number;
+      workOrderCode: number | string;
+      organizationCode: string;
+      userRoles: string[];
       actorId: string;
       actorName: string;
     },
   ) {
     return this.workOrdersService.release(
       dto.workOrderCode,
+      dto.organizationCode,
+      dto.userRoles,
       dto.actorId,
       dto.actorName,
     );
@@ -59,13 +66,17 @@ export class WorkOrdersController {
   complete(
     @Payload()
     dto: {
-      workOrderCode: number;
+      workOrderCode: number | string;
+      organizationCode: string;
+      userRoles: string[];
       actorId: string;
       actorName: string;
     },
   ) {
     return this.workOrdersService.complete(
       dto.workOrderCode,
+      dto.organizationCode,
+      dto.userRoles,
       dto.actorId,
       dto.actorName,
     );
@@ -75,13 +86,17 @@ export class WorkOrdersController {
   close(
     @Payload()
     dto: {
-      workOrderCode: number;
+      workOrderCode: number | string;
+      organizationCode: string;
+      userRoles: string[];
       actorId: string;
       actorName: string;
     },
   ) {
     return this.workOrdersService.close(
       dto.workOrderCode,
+      dto.organizationCode,
+      dto.userRoles,
       dto.actorId,
       dto.actorName,
     );
@@ -91,17 +106,61 @@ export class WorkOrdersController {
   cancel(
     @Payload()
     dto: {
-      workOrderCode: number;
+      workOrderCode: number | string;
+      organizationCode: string;
+      userRoles: string[];
       actorId: string;
       actorName: string;
-      canceledReason?: string;
+      canceledReason: string;
     },
   ) {
     return this.workOrdersService.cancel(
       dto.workOrderCode,
+      dto.organizationCode,
+      dto.userRoles,
       dto.actorId,
       dto.actorName,
       dto.canceledReason,
+    );
+  }
+
+  @MessagePattern("work.order.hold")
+  holdOn(
+    @Payload()
+    dto: {
+      workOrderCode: number | string;
+      organizationCode: string;
+      userRoles: string[];
+      actorId: string;
+      actorName: string;
+    },
+  ) {
+    return this.workOrdersService.holdOn(
+      dto.workOrderCode,
+      dto.organizationCode,
+      dto.userRoles,
+      dto.actorId,
+      dto.actorName,
+    );
+  }
+
+  @MessagePattern("work.order.pending-approval")
+  pendingApproval(
+    @Payload()
+    dto: {
+      workOrderCode: number | string;
+      organizationCode: string;
+      userRoles: string[];
+      actorId: string;
+      actorName: string;
+    },
+  ) {
+    return this.workOrdersService.pendingApproval(
+      dto.workOrderCode,
+      dto.organizationCode,
+      dto.userRoles,
+      dto.actorId,
+      dto.actorName,
     );
   }
 }

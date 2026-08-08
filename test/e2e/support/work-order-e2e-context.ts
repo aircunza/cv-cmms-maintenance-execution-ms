@@ -133,7 +133,7 @@ export async function assertRpcError(
         /not found|404/i.test(messageText) ||
         /not found/i.test(String(error?.error ?? ""))
           ? 404
-          : /bad request|400|validation|must|should not be empty|must be shorter/i.test(
+          : /bad request|400|validation|must|should not be empty|must be shorter|should not be|enableOracleWorkOrder/i.test(
                 messageText,
               )
             ? 400
@@ -201,4 +201,44 @@ export async function createWorkOrder(
     "work.order.create",
     defaultWoPayload(context, overrides),
   );
+}
+
+export function defaultUpdatePayload(
+  context: WorkOrderE2eContext,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    workOrderCode: "",
+    organizationCode: context.organizationCode,
+    userPermissions: context.userPermissions,
+    userRoles: context.userRoles,
+    actorId: context.actor.id,
+    actorName: context.actor.username,
+    enableOracleWorkOrder: "N",
+    ...overrides,
+  };
+}
+
+export async function updateWorkOrder(
+  context: WorkOrderE2eContext,
+  workOrderCode: string | number,
+  overrides: Record<string, unknown> = {},
+): Promise<any> {
+  return sendPattern(
+    context.client,
+    "work.order.update",
+    defaultUpdatePayload(context, { workOrderCode, ...overrides }),
+  );
+}
+
+export function createUpdateContext(
+  baseContext: WorkOrderE2eContext,
+  overrides: Partial<WorkOrderE2eContext> = {},
+): WorkOrderE2eContext {
+  return {
+    ...baseContext,
+    userPermissions: overrides.userPermissions ?? ["mnt.work.orders.update"],
+    userRoles: overrides.userRoles ?? baseContext.userRoles,
+    ...overrides,
+  };
 }

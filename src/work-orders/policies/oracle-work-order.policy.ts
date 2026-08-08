@@ -18,20 +18,40 @@ export class OracleWorkOrderPolicy {
     return envs.enableOracleWorkOrderSystem === 'Y';
   }
 
-  hasOraclePermission(userPermissions: string[]): boolean {
+  hasOracleCreatePermission(userPermissions: string[]): boolean {
     return userPermissions.includes('oracle.mnt.work.orders.create');
+  }
+
+  hasOracleUpdatePermission(userPermissions: string[]): boolean {
+    return userPermissions.includes('oracle.mnt.work.orders.update');
   }
 
   hasAllowedRole(userRoles: string[]): boolean {
     return userRoles.some((role) => ORACLE_ALLOWED_ROLES.includes(role));
   }
 
-  validate(userPermissions: string[], userRoles: string[]): { valid: boolean; error?: string } {
+  validateCreate(userPermissions: string[], userRoles: string[]): { valid: boolean; error?: string } {
     if (!this.isOracleEnabled()) {
       return { valid: true };
     }
 
-    if (!this.hasOraclePermission(userPermissions)) {
+    if (!this.hasOracleCreatePermission(userPermissions)) {
+      return { valid: false, error: 'MISSING_ORACLE_PERMISSION' };
+    }
+
+    if (!this.hasAllowedRole(userRoles)) {
+      return { valid: false, error: 'MISSING_ORACLE_PERMISSION' };
+    }
+
+    return { valid: true };
+  }
+
+  validateUpdate(userPermissions: string[], userRoles: string[]): { valid: boolean; error?: string } {
+    if (!this.isOracleEnabled()) {
+      return { valid: true };
+    }
+
+    if (!this.hasOracleUpdatePermission(userPermissions)) {
       return { valid: false, error: 'MISSING_ORACLE_PERMISSION' };
     }
 

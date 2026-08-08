@@ -1102,3 +1102,599 @@ THEN the system SHALL return a 403 status with error code `ORGANIZATION_MISMATCH
 
 IF an unexpected error occurs,  
 THEN the system SHALL return an internal server error response.
+
+---
+
+## Update Work Order
+
+### Communication
+
+NATS Pattern: `work.order.update` (via gateway)
+
+Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode`
+
+### Purpose
+
+Partially updates editable fields of an existing Work Order. Does not change status, operations, resources, or materials — those have dedicated endpoints.
+
+### Authentication & Authorization
+
+The endpoint requires:
+
+- **Gateway Auth**: Valid authentication token delegated to the gateway.
+
+#### Gateway-Injected Fields
+
+| Field            | Type     | Description                                                       |
+| ---------------- | -------- | ----------------------------------------------------------------- |
+| actorId          | string   | User ID from JWT payload                                          |
+| actorName        | string   | User name from JWT payload                                        |
+| organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
+| userPermissions  | string[] | Permissions from the user's role(s) in the target organization    |
+| userRoles        | string[] | Role codes from the user's assignments in the target organization |
+
+#### PolicyContext for Update
+
+The system SHALL enforce two policy contexts for update operations:
+
+**LocalUpdatePolicy**: When `enableOracleWorkOrder = "N"` or `ENABLE_ORACLE_WORK_ORDER_SYSTEM = "N"`:
+
+- User must have permission `mnt.work.orders.update` in the target organization
+
+**OracleUpdatePolicy**: When `enableOracleWorkOrder = "Y"` and `ENABLE_ORACLE_WORK_ORDER_SYSTEM = "Y"`:
+
+- User must have permission `mnt.work.orders.update` in the target organization
+- User must have permission `oracle.mnt.work.orders.update` in the target organization
+- User must have one of the allowed roles (same as OracleWorkOrderPolicy)
+
+Allowed roles for Oracle operations:
+
+- MANUFACTURING_FACILITATOR, TECHNICIAN_MAINTENANCE_01, TECHNICIAN_MAINTENANCE_02, PLANNER_MAINTENANCE_01, PLANNER_MAINTENANCE_02, COORDINATOR_MAINTENANCE_01, COORDINATOR_MAINTENANCE_02, SUPERVISOR_MAINTENANCE_01, SUPERVISOR_MAINTENANCE_02, ADMIN
+
+### Request
+
+#### Required Fields
+
+| Field                 | Type              | Max Length | Description                                                        |
+| --------------------- | ----------------- | ---------- | ------------------------------------------------------------------ |
+| enableOracleWorkOrder | string ("Y"\|"N")| 1          | Flag to enable Oracle integration for this update.                 |
+
+#### Editable Fields (All Optional)
+
+| Field                | Type                        | Max Length | Description                                                        |
+| -------------------- | --------------------------- | ---------- | ------------------------------------------------------------------ |
+| workOrderDescription | string                      | 240        | Updated description of the work order.                             |
+| workOrderType        | string                      | 30         | Updated work order type (e.g., "Planned", "Not Planned").          |
+| workOrderSubType     | string                      | 30         | Updated work order sub-type.                                       |
+| workOrderPriority    | string ("1"\|"2"\|"3"\|"4") | -          | Updated priority level.                                            |
+
+#### Example Request Payload
+
+```json
+{
+  "workOrderCode": "1001",
+  "organizationCode": "ORG-BOG-001",
+  "userPermissions": ["mnt.work.orders.update"],
+  "userRoles": ["PLANNER_MAINTENANCE_01"],
+  "actorId": "550e8400-e29b-41d4-a716-446655440001",
+  "actorName": "John Doe",
+  "enableOracleWorkOrder": "N",
+  "workOrderDescription": "Updated description"
+}
+```
+
+### Validations
+
+**R-WO-UP-01**
+
+IF `workOrderCode` is missing or invalid,  
+THEN the system SHALL reject the request.
+
+**R-WO-UP-02**
+
+IF `organizationCode` is missing, empty, or invalid,  
+THEN the system SHALL reject the request.
+
+**R-WO-UP-03**
+
+IF `userPermissions` does not include `mnt.work.orders.update`,  
+THEN the system SHALL reject the request with a 403 status and error code `MISSING_PERMISSION`.
+
+**R-WO-UP-04**
+
+IF `enableOracleWorkOrder = "Y"` and `ENABLE_ORACLE_WORK_ORDER_SYSTEM = "Y"` and `userPermissions` does not include `oracle.mnt.work.orders.update`,  
+THEN the system SHALL reject the request with a 403 status and error code `MISSING_ORACLE_PERMISSION`.
+
+**R-WO-UP-05**
+
+IF the Work Order does not exist,  
+THEN the system SHALL reject the request with a 404 status and message `Work order not found`.
+
+**R-WO-UP-06**
+
+IF the Work Order's `organizationCode` does not match the gateway-injected `organizationCode`,  
+THEN the system SHALL reject the request with a 403 status and error code `ORGANIZATION_MISMATCH`.
+
+**R-WO-UP-07**
+
+IF `workOrderType` and/or `workOrderSubType` are provided and their combination is not allowed,  
+THEN the system SHALL reject the request with a 400 status.
+
+Allowed combinations (same as create):
+
+```json
+[
+  { "workOrderType": "Planned", "workOrderSubType": "Preventive" },
+  { "workOrderType": "Planned", "workOrderSubType": "Corrective" },
+  { "workOrderType": "Planned", "workOrderSubType": "Inspection" },
+  { "workOrderType": "Planned", "workOrderSubType": "TPM" },
+  { "workOrderType": "Not Planned", "workOrderSubType": "Emergency" }
+]
+```
+
+**R-WO-UP-08**
+
+IF `workOrderSubType` is provided and the user's roles are not authorized to access the requested sub-type,  
+THEN the system SHALL reject the request with a 403 status and error code `SUBTYPE_NOT_ALLOWED_FOR_ROLE`.
+
+Role-based sub-type restrictions (same table as create):
+
+| Role                       | Allowed Sub-Types                             |
+| -------------------------- | --------------------------------------------- |
+| MANUFACTURING_FACILITATOR  | Emergency                                     |
+| TECHNICIAN_MAINTENANCE_01  | Corrective                                    |
+| TECHNICIAN_MAINTENANCE_02  | Corrective, Emergency, Inspection             |
+| PLANNER_MAINTENANCE_01     | Preventive, Corrective, Emergency, Inspection |
+| PLANNER_MAINTENANCE_02     | Preventive, Corrective, Emergency, Inspection |
+| COORDINATOR_MAINTENANCE_01 | Preventive, Corrective, Emergency             |
+| COORDINATOR_MAINTENANCE_02 | Preventive, Corrective, Emergency             |
+| SUPERVISOR_MAINTENANCE_01  | Emergency                                     |
+| SUPERVISOR_MAINTENANCE_02  | Emergency                                     |
+| ADMIN                      | All (no restrictions)                         |
+
+**R-WO-UP-09**
+
+IF `workOrderPriority` is provided and is not one of "1", "2", "3", "4",  
+THEN the system SHALL reject the request with a 400 status.
+
+### Processing
+
+**R-WO-UP-10**
+
+WHEN a valid update request is received,  
+the system SHALL:
+
+1. Validate all permissions and authorizations
+2. Find the Work Order by `workOrderCode`
+3. Validate organization ownership
+4. Apply only the provided fields (partial update)
+5. Set `updatedBy`, `updatedByName`, and `updatedAt` to the current actor and timestamp
+6. Return the full updated Work Order with all nested operations, resources, and materials
+
+### Response
+
+**R-WO-UP-11**
+
+WHEN the update is successful,  
+the system SHALL return a 200 status with the updated Work Order wrapped in a `workOrder` object including all fields and nested data (same structure as `work.order.find.one` response).
+
+### Errors
+
+**R-WO-UP-12**
+
+IF the request contains validation errors,  
+THEN the system SHALL return a 400 status with a `message` field containing validation error strings.
+
+**R-WO-UP-13**
+
+IF an unexpected error occurs,  
+THEN the system SHALL return an internal server error response.
+
+---
+
+## Release Work Order
+
+### Communication
+
+NATS Pattern: `work.order.release` (via gateway)
+
+Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode/release`
+
+### Purpose
+
+Transitions a Work Order from `UNRELEASED` or `ON_HOLD` to `RELEASED` status.
+
+### Gateway-Injected Fields
+
+| Field      | Type   | Description                          |
+| ---------- | ------ | ------------------------------------ |
+| actorId    | string | User ID from JWT payload             |
+| actorName  | string | User name from JWT payload           |
+
+### Validations
+
+**R-WO-RL-01**
+
+IF the Work Order does not exist,  
+THEN the system SHALL reject the request with a 404 status.
+
+**R-WO-RL-02**
+
+IF the Work Order's current status does not allow transition to `RELEASED`,  
+THEN the system SHALL reject the request with a 400 status.
+
+Allowed transitions to `RELEASED`:
+
+- `UNRELEASED` → `RELEASED`
+- `ON_HOLD` → `RELEASED`
+
+### Processing
+
+**R-WO-RL-03**
+
+WHEN a Work Order is released,  
+the system SHALL set `releasedDate` to the current timestamp.
+
+### Response
+
+Returns the updated Work Order with `woStatusCode: "RELEASED"` and `releasedDate` set.
+
+### Errors
+
+**R-WO-RL-04**
+
+IF an unexpected error occurs,  
+THEN the system SHALL return an internal server error response.
+
+---
+
+## Hold On Work Order
+
+### Communication
+
+NATS Pattern: `work.order.hold` (via gateway)
+
+Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode/hold`
+
+### Purpose
+
+Transitions a Work Order from `UNRELEASED` or `RELEASED` to `ON_HOLD` status.
+
+### Gateway-Injected Fields
+
+| Field      | Type   | Description                          |
+| ---------- | ------ | ------------------------------------ |
+| actorId    | string | User ID from JWT payload             |
+| actorName  | string | User name from JWT payload           |
+
+### Validations
+
+**R-WO-HO-01**
+
+IF the Work Order does not exist,  
+THEN the system SHALL reject the request with a 404 status.
+
+**R-WO-HO-02**
+
+IF the Work Order's current status does not allow transition to `ON_HOLD`,  
+THEN the system SHALL reject the request with a 400 status.
+
+Allowed transitions to `ON_HOLD`:
+
+- `UNRELEASED` → `ON_HOLD`
+- `RELEASED` → `ON_HOLD`
+
+### Full Status Transition Reference
+
+| From Status      | Allowed Transitions To       |
+| ---------------- | ---------------------------- |
+| UNRELEASED       | ON_HOLD, RELEASED, CANCELED  |
+| RELEASED         | COMPLETED, ON_HOLD, CANCELED |
+| ON_HOLD          | RELEASED, CANCELED           |
+| COMPLETED        | CLOSED, RELEASED             |
+| CLOSED           | [] (terminal)                |
+| CANCELED         | [] (terminal)                |
+| PENDING_APPROVAL | UNRELEASED                   |
+
+### Response
+
+Returns the updated Work Order with `woStatusCode: "ON_HOLD"`.
+
+### Errors
+
+**R-WO-HO-04**
+
+IF an unexpected error occurs,  
+THEN the system SHALL return an internal server error response.
+
+---
+
+## Complete Work Order
+
+### Communication
+
+NATS Pattern: `work.order.complete` (via gateway)
+
+Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode/complete`
+
+### Purpose
+
+Transitions a Work Order from `RELEASED` to `COMPLETED` status.
+
+### Gateway-Injected Fields
+
+| Field      | Type   | Description                          |
+| ---------- | ------ | ------------------------------------ |
+| actorId    | string | User ID from JWT payload             |
+| actorName  | string | User name from JWT payload           |
+
+### Validations
+
+**R-WO-CM-01**
+
+IF the Work Order does not exist,  
+THEN the system SHALL reject the request with a 404 status.
+
+**R-WO-CM-02**
+
+IF the Work Order's current status is not `RELEASED`,  
+THEN the system SHALL reject the request with a 400 status.
+
+### Full Status Transition Reference
+
+| From Status      | Allowed Transitions To       |
+| ---------------- | ---------------------------- |
+| UNRELEASED       | ON_HOLD, RELEASED, CANCELED  |
+| RELEASED         | COMPLETED, ON_HOLD, CANCELED |
+| ON_HOLD          | RELEASED, CANCELED           |
+| COMPLETED        | CLOSED, RELEASED             |
+| CLOSED           | [] (terminal)                |
+| CANCELED         | [] (terminal)                |
+| PENDING_APPROVAL | UNRELEASED                   |
+
+### Response
+
+Returns the updated Work Order with `woStatusCode: "COMPLETED"`.
+
+### Errors
+
+**R-WO-CM-03**
+
+IF an unexpected error occurs,  
+THEN the system SHALL return an internal server error response.
+
+---
+
+## Close Work Order
+
+### Communication
+
+NATS Pattern: `work.order.close` (via gateway)
+
+Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode/close`
+
+### Purpose
+
+Transitions a Work Order from `COMPLETED` to `CLOSED` status (terminal state).
+
+### Gateway-Injected Fields
+
+| Field      | Type   | Description                          |
+| ---------- | ------ | ------------------------------------ |
+| actorId    | string | User ID from JWT payload             |
+| actorName  | string | User name from JWT payload           |
+
+### Validations
+
+**R-WO-CL-01**
+
+IF the Work Order does not exist,  
+THEN the system SHALL reject the request with a 404 status.
+
+**R-WO-CL-02**
+
+IF the Work Order's current status is not `COMPLETED`,  
+THEN the system SHALL reject the request with a 400 status.
+
+### Full Status Transition Reference
+
+| From Status      | Allowed Transitions To       |
+| ---------------- | ---------------------------- |
+| UNRELEASED       | ON_HOLD, RELEASED, CANCELED  |
+| RELEASED         | COMPLETED, ON_HOLD, CANCELED |
+| ON_HOLD          | RELEASED, CANCELED           |
+| COMPLETED        | CLOSED, RELEASED             |
+| CLOSED           | [] (terminal)                |
+| CANCELED         | [] (terminal)                |
+| PENDING_APPROVAL | UNRELEASED                   |
+
+### Processing
+
+**R-WO-CL-03**
+
+WHEN a Work Order is closed,  
+the system SHALL set `closedDate` to the current timestamp.
+
+### Response
+
+Returns the updated Work Order with `woStatusCode: "CLOSED"` and `closedDate` set.
+
+### Errors
+
+**R-WO-CL-04**
+
+IF an unexpected error occurs,  
+THEN the system SHALL return an internal server error response.
+
+---
+
+## Cancel Work Order
+
+### Communication
+
+NATS Pattern: `work.order.cancel` (via gateway)
+
+Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode/cancel`
+
+### Purpose
+
+Cancels a Work Order and all its operations (terminal state).
+
+### Gateway-Injected Fields
+
+| Field      | Type   | Description                          |
+| ---------- | ------ | ------------------------------------ |
+| actorId    | string | User ID from JWT payload             |
+| actorName  | string | User name from JWT payload           |
+
+### Request
+
+| Field          | Type   | Required | Description                                     |
+| -------------- | ------ | -------- | ----------------------------------------------- |
+| canceledReason | string | Yes      | Reason for cancellation (max 240 characters).   |
+
+### Validations
+
+**R-WO-CN-01**
+
+IF the Work Order does not exist,  
+THEN the system SHALL reject the request with a 404 status.
+
+**R-WO-CN-02**
+
+IF the Work Order's current status does not allow transition to `CANCELED`,  
+THEN the system SHALL reject the request with a 400 status.
+
+Allowed transitions to `CANCELED`:
+
+- `UNRELEASED` → `CANCELED`
+- `RELEASED` → `CANCELED`
+- `ON_HOLD` → `CANCELED`
+
+### Full Status Transition Reference
+
+| From Status      | Allowed Transitions To       |
+| ---------------- | ---------------------------- |
+| UNRELEASED       | ON_HOLD, RELEASED, CANCELED  |
+| RELEASED         | COMPLETED, ON_HOLD, CANCELED |
+| ON_HOLD          | RELEASED, CANCELED           |
+| COMPLETED        | CLOSED, RELEASED             |
+| CLOSED           | [] (terminal)                |
+| CANCELED         | [] (terminal)                |
+| PENDING_APPROVAL | UNRELEASED                   |
+
+**R-WO-CN-03**
+
+IF `canceledReason` is missing or empty,  
+THEN the system SHALL reject the request with a 400 status.
+
+### Processing
+
+**R-WO-CN-04**
+
+WHEN a Work Order is canceled,  
+the system SHALL:
+
+1. Set `woStatusCode` to `CANCELED`
+2. Set `canceledDate` to the current timestamp
+3. Set `canceledReason` to the provided value
+4. Set all operations' `operationStatus` to `CANCELED`
+
+### Response
+
+Returns the updated Work Order with `woStatusCode: "CANCELED"`, `canceledDate` set, `canceledReason` set, and all operations with `operationStatus: "CANCELED"`.
+
+### Errors
+
+**R-WO-CN-05**
+
+IF an unexpected error occurs,  
+THEN the system SHALL return an internal server error response.
+
+---
+
+## Pending Approval Work Order
+
+### Communication
+
+NATS Pattern: `work.order.pending-approval` (via gateway)
+
+Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode/pending-approval`
+
+### Purpose
+
+Transitions a Work Order from `PENDING_APPROVAL` to `UNRELEASED` status.
+
+### Gateway-Injected Fields
+
+| Field      | Type   | Description                          |
+| ---------- | ------ | ------------------------------------ |
+| actorId    | string | User ID from JWT payload             |
+| actorName  | string | User name from JWT payload           |
+
+### Validations
+
+**R-WO-PA-01**
+
+IF the Work Order does not exist,  
+THEN the system SHALL reject the request with a 404 status.
+
+**R-WO-PA-02**
+
+IF the Work Order's current status is not `PENDING_APPROVAL`,  
+THEN the system SHALL reject the request with a 400 status.
+
+Allowed transitions from `PENDING_APPROVAL`:
+
+- `PENDING_APPROVAL` → `UNRELEASED`
+
+### Full Status Transition Reference
+
+| From Status      | Allowed Transitions To       |
+| ---------------- | ---------------------------- |
+| UNRELEASED       | ON_HOLD, RELEASED, CANCELED  |
+| RELEASED         | COMPLETED, ON_HOLD, CANCELED |
+| ON_HOLD          | RELEASED, CANCELED           |
+| COMPLETED        | CLOSED, RELEASED             |
+| CLOSED           | [] (terminal)                |
+| CANCELED         | [] (terminal)                |
+| PENDING_APPROVAL | UNRELEASED                   |
+
+### Response
+
+Returns the updated Work Order with `woStatusCode: "UNRELEASED"`.
+
+### Errors
+
+**R-WO-PA-04**
+
+IF an unexpected error occurs,  
+THEN the system SHALL return an internal server error response.
+
+---
+
+## Status Transition Reference
+
+### Work Order Status Transitions
+
+| From Status      | Allowed Transitions To       |
+| ---------------- | ---------------------------- |
+| UNRELEASED       | ON_HOLD, RELEASED, CANCELED  |
+| RELEASED         | COMPLETED, ON_HOLD, CANCELED |
+| ON_HOLD          | RELEASED, CANCELED           |
+| COMPLETED        | CLOSED, RELEASED             |
+| CLOSED           | [] (terminal)                |
+| CANCELED         | [] (terminal)                |
+| PENDING_APPROVAL | UNRELEASED                   |
+
+### Work Order Status / Operation Status Compatibility
+
+| woStatusCode     | Allowed operationStatus values  |
+| ---------------- | ------------------------------- |
+| UNRELEASED       | UNRELEASED                      |
+| RELEASED         | RELEASED, COMPLETED, IN_PROCESS |
+| ON_HOLD          | ON_HOLD                         |
+| PENDING_APPROVAL | UNRELEASED                      |
+| COMPLETED        | COMPLETED, NOT_DONE             |
+| CLOSED           | COMPLETED, NOT_DONE             |
+| CANCELED         | CANCELED                        |
