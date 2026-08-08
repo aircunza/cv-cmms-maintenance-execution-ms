@@ -107,15 +107,24 @@ export class WorkOrdersService {
         });
       }
 
-      const oracleCheck = this.oraclePolicy.validateCreate(
-        dto.userPermissions,
-        dto.userRoles,
-      );
-      if (dto.enableOracleWorkOrder === "Y" && !oracleCheck.valid) {
+      if (!dto.userPermissions.includes('mnt.work.orders.create')) {
         throw new RpcException({
           status: 403,
-          message: oracleCheck.error,
+          message: 'MISSING_PERMISSION',
         });
+      }
+
+      if (dto.enableOracleWorkOrder === 'Y') {
+        const oracleCheck = this.oraclePolicy.validateCreate(
+          dto.userPermissions,
+          dto.userRoles,
+        );
+        if (!oracleCheck.valid) {
+          throw new RpcException({
+            status: 403,
+            message: oracleCheck.error,
+          });
+        }
       }
 
       if (

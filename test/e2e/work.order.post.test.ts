@@ -1115,6 +1115,29 @@ describe("WO Creation POST (e2e, NATS)", () => {
 
   // ==================== PERMISSION VALIDATIONS (403) ====================
 
+  it("rejects without mnt.work.orders.create permission -> 403 MISSING_PERMISSION", async () => {
+    await assertRpcError(
+      sendPattern(context.client, "work.order.create", {
+        ...defaultWoPayload(context),
+        userPermissions: [],
+      }),
+      403,
+      "MISSING_PERMISSION",
+    );
+  });
+
+  it("skips Oracle validation when ENABLE_ORACLE_WORK_ORDER_SYSTEM is N", async () => {
+    // When system-level Oracle flag is "N", the check is bypassed
+    // even if enableOracleWorkOrder = "Y" in the payload
+    const response = await sendPattern(context.client, "work.order.create", {
+      ...defaultWoPayload(context),
+      userPermissions: ["mnt.work.orders.create"],
+      enableOracleWorkOrder: "Y",
+    });
+
+    expect(response.workOrder).toBeDefined();
+  });
+
   it("rejects when organization mismatch", async () => {
     await assertRpcError(
       sendPattern(context.client, "work.order.create", {
