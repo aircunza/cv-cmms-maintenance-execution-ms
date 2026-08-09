@@ -630,6 +630,7 @@ export class WorkOrdersService {
   async findOne(dto: WorkOrderCodeDto) {
     try {
       this.validateReadContext(dto);
+      this.requireViewPermission(dto.userPermissions);
 
       const workOrder = await this.prisma.mntWorkOrder.findFirst({
         where: { workOrderCode: BigInt(String(dto.workOrderCode)) },
@@ -657,15 +658,6 @@ export class WorkOrdersService {
         });
       }
 
-      if (
-        !this.canAccessSubType(dto.userRoles, workOrder.workOrderSubType ?? "")
-      ) {
-        throw new RpcException({
-          status: 403,
-          message: "SUBTYPE_NOT_ALLOWED_FOR_ROLE",
-        });
-      }
-
       return { workOrder: this.mapToResponse(workOrder) };
     } catch (error) {
       if (error instanceof RpcException) throw error;
@@ -676,6 +668,7 @@ export class WorkOrdersService {
   async findAll(dto: FindAllWorkOrderDto) {
     try {
       this.validateReadContext(dto);
+      this.requireViewPermission(dto.userPermissions);
 
       const where = this.buildFindAllWhere(dto);
       const orderBy = this.buildFindAllOrder(dto.order);
@@ -737,6 +730,18 @@ export class WorkOrdersService {
     }
   }
 
+  private requireViewPermission(userPermissions?: string[]) {
+    if (
+      !Array.isArray(userPermissions) ||
+      !userPermissions.includes("mnt.work.orders.view")
+    ) {
+      throw new RpcException({
+        status: 403,
+        message: "MISSING_PERMISSION",
+      });
+    }
+  }
+
   private canAccessSubType(
     userRoles: string[] | undefined,
     workOrderSubType: string,
@@ -759,40 +764,13 @@ export class WorkOrdersService {
       conditions.push({ organizationCode: dto.organizationCode });
     }
 
-    if (dto.assetCode) {
-      conditions.push({ assetCode: { contains: dto.assetCode } });
-    }
-
-    if (dto.woStatusCode) {
-      conditions.push({ woStatusCode: dto.woStatusCode });
-    }
-
-    if (dto.workOrderType) {
-      conditions.push({ workOrderType: dto.workOrderType });
-    }
-
-    if (dto.workOrderSubType) {
-      if (!this.canAccessSubType(dto.userRoles, dto.workOrderSubType)) {
-        throw new RpcException({
-          status: 403,
-          message: "SUBTYPE_NOT_ALLOWED_FOR_ROLE",
-        });
-      }
-      conditions.push({ workOrderSubType: dto.workOrderSubType });
-    } else {
-      const allowedSubTypes = this.getAllowedSubTypes(dto.userRoles ?? []);
-      if (allowedSubTypes.length > 0) {
-        conditions.push({ workOrderSubType: { in: allowedSubTypes } });
-      }
-    }
-
     if (dto.filters) {
       if (!Array.isArray(dto.filters)) {
         throw this.invalidFilterDataException();
       }
 
       const filters = dto.filters.map((filter) =>
-        this.mapFilterToWhereCondition(filter, dto.userRoles),
+        this.mapFilterToWhereCondition(filter),
       );
       conditions.push(...filters);
     }
@@ -854,7 +832,6 @@ export class WorkOrdersService {
 
   private mapFilterToWhereCondition(
     filter: WorkOrderFilterDto,
-    userRoles?: string[],
   ): Prisma.MntWorkOrderWhereInput {
     if (!filter || typeof filter !== "object") {
       throw this.invalidFilterDataException();
@@ -868,17 +845,6 @@ export class WorkOrdersService {
       typeof operator !== "string"
     ) {
       throw this.invalidFilterDataException();
-    }
-
-    if (
-      field === "workOrderSubType" &&
-      typeof value === "string" &&
-      !this.canAccessSubType(userRoles, value)
-    ) {
-      throw new RpcException({
-        status: 403,
-        message: "SUBTYPE_NOT_ALLOWED_FOR_ROLE",
-      });
     }
 
     const normalizedOperator =
@@ -938,32 +904,6 @@ export class WorkOrdersService {
     }
 
     return value;
-  }
-
-  private getAllowedSubTypes(userRoles: string[]): string[] {
-    const allowed = new Set<string>();
-    for (const role of userRoles) {
-      const roleAllowed = this.subtypePolicy.canCreateSubType(
-        [role],
-        "Preventive",
-      );
-      if (roleAllowed) {
-        allowed.add("Preventive");
-      }
-      if (this.subtypePolicy.canCreateSubType([role], "Corrective")) {
-        allowed.add("Corrective");
-      }
-      if (this.subtypePolicy.canCreateSubType([role], "Emergency")) {
-        allowed.add("Emergency");
-      }
-      if (this.subtypePolicy.canCreateSubType([role], "Inspection")) {
-        allowed.add("Inspection");
-      }
-      if (this.subtypePolicy.canCreateSubType([role], "TPM")) {
-        allowed.add("TPM");
-      }
-    }
-    return Array.from(allowed);
   }
 
   private invalidFilterDataException() {

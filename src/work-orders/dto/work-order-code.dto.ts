@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty, IsString } from "class-validator";
+import { IsArray, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class WorkOrderCodeDto {
   @IsNotEmpty()
@@ -11,4 +11,9 @@ export class WorkOrderCodeDto {
   @IsArray()
   @IsString({ each: true })
   userRoles: string[];
+
+  @IsArray()
+  @IsOptional()
+  @IsString({ each: true })
+  userPermissions?: string[];
 }

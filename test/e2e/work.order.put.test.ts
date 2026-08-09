@@ -96,6 +96,7 @@ describe("WO Update (e2e, NATS)", () => {
       workOrderCode: createdWo.workOrder.workOrderCode,
       organizationCode: context.organizationCode,
       userRoles: context.userRoles,
+      userPermissions: context.userPermissions,
     });
 
     await updateWorkOrder(updateCtx, createdWo.workOrder.workOrderCode, {
@@ -106,6 +107,7 @@ describe("WO Update (e2e, NATS)", () => {
       workOrderCode: createdWo.workOrder.workOrderCode,
       organizationCode: context.organizationCode,
       userRoles: context.userRoles,
+      userPermissions: context.userPermissions,
     });
 
     expect(woAfter.workOrder.workOrderType).toBe(

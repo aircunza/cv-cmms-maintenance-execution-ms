@@ -858,8 +858,9 @@ The gateway MUST inject the following fields into the NATS payload:
 | ---------------- | -------- | ----------------------------------------------------------------- |
 | organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
 | userRoles        | string[] | Role codes from the user's assignments in the target organization |
+| userPermissions  | string[] | Permission codes for the user in the target organization          |
 
-The microservice SHALL enforce tenant isolation and role-based access using the injected fields.
+The microservice SHALL enforce tenant isolation, role presence, and read permission using the injected fields.
 
 ### Request
 
@@ -870,13 +871,7 @@ The query payload SHALL support:
 - `limit`: maximum number of rows to return
 - `offset`: number of rows to skip
 
-Legacy query fields SHALL remain supported for backward compatibility:
-
-- `assetCode`
-- `organizationCode`
-- `woStatusCode`
-- `workOrderType`
-- `workOrderSubType`
+No legacy top-level query fields are supported. Filtering by `assetCode`, `woStatusCode`, `workOrderType`, `workOrderSubType`, or `organizationCode` SHALL be done using the `filters` array.
 
 #### Supported Operators
 
@@ -912,6 +907,7 @@ Legacy query fields SHALL remain supported for backward compatibility:
 {
   "organizationCode": "ORG-BOG-001",
   "userRoles": ["PLANNER_MAINTENANCE_01"],
+  "userPermissions": ["mnt.work.orders.view"],
   "filters": [
     {
       "field": "woStatusCode",
@@ -954,8 +950,10 @@ THEN the system SHALL reject the request with a 400 status and message `Invalid 
 
 **R-WO-GE-05**
 
-IF the user roles are not authorized to access a requested `workOrderSubType`,  
-THEN the system SHALL reject the request with a 403 status and error code `SUBTYPE_NOT_ALLOWED_FOR_ROLE`.
+IF `userPermissions` does not include `mnt.work.orders.view`,  
+THEN the system SHALL reject the request with a 403 status and error code `MISSING_PERMISSION`.
+
+> Read access is governed ONLY by the `mnt.work.orders.view` permission. Any user with it can see all Work Orders of the target organization, regardless of role or Work Order sub-type. Sub-type restrictions apply only to create and update operations.
 
 ### Processing
 
@@ -965,7 +963,7 @@ WHEN a valid query is received,
 the system SHALL:
 
 1. Enforce organization isolation using injected `organizationCode`
-2. Enforce role-based sub-type access using injected `userRoles`
+2. Enforce read permission using injected `userPermissions` (`mnt.work.orders.view`)
 3. Build dynamic query conditions from `filters` using AND logic
 4. Apply sort criteria from `order` (default: `createdAt DESC`, `workOrderCode DESC`)
 5. Apply pagination from `limit` and `offset`
@@ -1035,6 +1033,7 @@ The gateway MUST inject the following fields into the NATS payload:
 | ---------------- | -------- | ----------------------------------------------------------------- |
 | organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
 | userRoles        | string[] | Role codes from the user's assignments in the target organization |
+| userPermissions  | string[] | Permission codes for the user in the target organization          |
 
 ### Request
 
@@ -1043,6 +1042,7 @@ Required payload fields:
 - `workOrderCode`
 - `organizationCode`
 - `userRoles`
+- `userPermissions`
 
 ### Validations
 
@@ -1058,8 +1058,10 @@ THEN the system SHALL reject the request.
 
 **R-WO-FO-03**
 
-IF the user roles are not authorized to access the target Work Order sub-type,  
-THEN the system SHALL reject the request with a 403 status and error code `SUBTYPE_NOT_ALLOWED_FOR_ROLE`.
+IF `userPermissions` does not include `mnt.work.orders.view`,  
+THEN the system SHALL reject the request with a 403 status and error code `MISSING_PERMISSION`.
+
+> Read access is governed ONLY by the `mnt.work.orders.view` permission. Any user with it can view the Work Order, regardless of role or sub-type. Sub-type restrictions apply only to create and update operations.
 
 ### Processing
 
@@ -1070,7 +1072,7 @@ the system SHALL:
 
 1. Find the Work Order by `workOrderCode`
 2. Validate organization ownership against injected `organizationCode`
-3. Validate role-based access to the Work Order sub-type
+3. Validate read permission using injected `userPermissions` (`mnt.work.orders.view`)
 4. Load all related operations, resources, and materials
 5. Return the mapped response including status labels and BigInt string serialization
 
@@ -1306,10 +1308,12 @@ Transitions a Work Order from `UNRELEASED` or `ON_HOLD` to `RELEASED` status.
 
 ### Gateway-Injected Fields
 
-| Field      | Type   | Description                          |
-| ---------- | ------ | ------------------------------------ |
-| actorId    | string | User ID from JWT payload             |
-| actorName  | string | User name from JWT payload           |
+| Field            | Type     | Description                                                       |
+| ---------------- | -------- | ----------------------------------------------------------------- |
+| organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
+| userRoles        | string[] | Role codes from the user's assignments in the target organization |
+| actorId          | string   | User ID from JWT payload                                          |
+| actorName        | string   | User name from JWT payload                                        |
 
 ### Validations
 
@@ -1362,10 +1366,12 @@ Transitions a Work Order from `UNRELEASED` or `RELEASED` to `ON_HOLD` status.
 
 ### Gateway-Injected Fields
 
-| Field      | Type   | Description                          |
-| ---------- | ------ | ------------------------------------ |
-| actorId    | string | User ID from JWT payload             |
-| actorName  | string | User name from JWT payload           |
+| Field            | Type     | Description                                                       |
+| ---------------- | -------- | ----------------------------------------------------------------- |
+| organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
+| userRoles        | string[] | Role codes from the user's assignments in the target organization |
+| actorId          | string   | User ID from JWT payload                                          |
+| actorName        | string   | User name from JWT payload                                        |
 
 ### Validations
 
@@ -1423,10 +1429,12 @@ Transitions a Work Order from `RELEASED` to `COMPLETED` status.
 
 ### Gateway-Injected Fields
 
-| Field      | Type   | Description                          |
-| ---------- | ------ | ------------------------------------ |
-| actorId    | string | User ID from JWT payload             |
-| actorName  | string | User name from JWT payload           |
+| Field            | Type     | Description                                                       |
+| ---------------- | -------- | ----------------------------------------------------------------- |
+| organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
+| userRoles        | string[] | Role codes from the user's assignments in the target organization |
+| actorId          | string   | User ID from JWT payload                                          |
+| actorName        | string   | User name from JWT payload                                        |
 
 ### Validations
 
@@ -1479,10 +1487,12 @@ Transitions a Work Order from `COMPLETED` to `CLOSED` status (terminal state).
 
 ### Gateway-Injected Fields
 
-| Field      | Type   | Description                          |
-| ---------- | ------ | ------------------------------------ |
-| actorId    | string | User ID from JWT payload             |
-| actorName  | string | User name from JWT payload           |
+| Field            | Type     | Description                                                       |
+| ---------------- | -------- | ----------------------------------------------------------------- |
+| organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
+| userRoles        | string[] | Role codes from the user's assignments in the target organization |
+| actorId          | string   | User ID from JWT payload                                          |
+| actorName        | string   | User name from JWT payload                                        |
 
 ### Validations
 
@@ -1647,10 +1657,12 @@ Transitions a Work Order from `PENDING_APPROVAL` to `UNRELEASED` status.
 
 ### Gateway-Injected Fields
 
-| Field      | Type   | Description                          |
-| ---------- | ------ | ------------------------------------ |
-| actorId    | string | User ID from JWT payload             |
-| actorName  | string | User name from JWT payload           |
+| Field            | Type     | Description                                                       |
+| ---------------- | -------- | ----------------------------------------------------------------- |
+| organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
+| userRoles        | string[] | Role codes from the user's assignments in the target organization |
+| actorId          | string   | User ID from JWT payload                                          |
+| actorName        | string   | User name from JWT payload                                        |
 
 ### Validations
 

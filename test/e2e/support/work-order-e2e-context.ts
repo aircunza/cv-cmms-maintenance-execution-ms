@@ -84,7 +84,7 @@ export async function setupWorkOrderE2eContext(): Promise<WorkOrderE2eContext> {
     organizationCode: mockOrganizations[0].code,
     organizationName: mockOrganizations[0].name,
     actor: mockUsers[0],
-    userPermissions: ["mnt.work.orders.create"],
+    userPermissions: ["mnt.work.orders.view", "mnt.work.orders.create"],
     userRoles: ["PLANNER_MAINTENANCE_01"],
   };
 }

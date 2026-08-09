@@ -40,6 +40,7 @@ describe("WO GET (e2e, NATS)", () => {
       workOrderCode: createdWo.workOrder.workOrderCode,
       organizationCode: context.organizationCode,
       userRoles: context.userRoles,
+      userPermissions: context.userPermissions,
     });
 
     expect(response.workOrder).toBeDefined();
@@ -62,6 +63,7 @@ describe("WO GET (e2e, NATS)", () => {
         workOrderCode: "999999",
         organizationCode: context.organizationCode,
         userRoles: context.userRoles,
+        userPermissions: context.userPermissions,
       }),
       404,
       "Work order not found",
@@ -89,15 +91,16 @@ describe("WO GET (e2e, NATS)", () => {
     );
   });
 
-  it("rejects find.one when subtype not authorized for role -> 403 SUBTYPE_NOT_ALLOWED_FOR_ROLE", async () => {
+  it("rejects find.one when mnt.work.orders.view is missing -> 403 MISSING_PERMISSION", async () => {
     await assertRpcError(
       sendPattern(context.client, "work.order.find.one", {
         workOrderCode: createdWo.workOrder.workOrderCode,
         organizationCode: context.organizationCode,
         userRoles: ["TECHNICIAN_MAINTENANCE_01"],
+        userPermissions: ["mnt.work.orders.create"],
       }),
       403,
-      "SUBTYPE_NOT_ALLOWED_FOR_ROLE",
+      "MISSING_PERMISSION",
     );
   });
 
@@ -118,6 +121,7 @@ describe("WO GET (e2e, NATS)", () => {
         workOrderCode: createdWo.workOrder.workOrderCode,
         organizationCode: "OTHER-ORG",
         userRoles: context.userRoles,
+        userPermissions: context.userPermissions,
       }),
       403,
       "ORGANIZATION_MISMATCH",
@@ -130,6 +134,7 @@ describe("WO GET (e2e, NATS)", () => {
     const response = await sendPattern(context.client, "work.order.find.all", {
       organizationCode: context.organizationCode,
       userRoles: context.userRoles,
+      userPermissions: context.userPermissions,
       filters: [
         {
           field: "organizationCode",
@@ -154,6 +159,7 @@ describe("WO GET (e2e, NATS)", () => {
     const response = await sendPattern(context.client, "work.order.find.all", {
       organizationCode: context.organizationCode,
       userRoles: context.userRoles,
+      userPermissions: context.userPermissions,
       filters: [
         {
           field: "workOrderCode",
@@ -173,6 +179,7 @@ describe("WO GET (e2e, NATS)", () => {
     const response = await sendPattern(context.client, "work.order.find.all", {
       organizationCode: context.organizationCode,
       userRoles: context.userRoles,
+      userPermissions: context.userPermissions,
       filters: [
         { field: "workOrderDescription", operator: "like", value: "Alpha" },
       ],
@@ -188,6 +195,7 @@ describe("WO GET (e2e, NATS)", () => {
     const response = await sendPattern(context.client, "work.order.find.all", {
       organizationCode: context.organizationCode,
       userRoles: context.userRoles,
+      userPermissions: context.userPermissions,
       filters: [
         {
           field: "createdAt",
@@ -204,6 +212,7 @@ describe("WO GET (e2e, NATS)", () => {
     const response = await sendPattern(context.client, "work.order.find.all", {
       organizationCode: context.organizationCode,
       userRoles: context.userRoles,
+      userPermissions: context.userPermissions,
       filters: [
         {
           field: "createdAt",
@@ -220,6 +229,7 @@ describe("WO GET (e2e, NATS)", () => {
     const response = await sendPattern(context.client, "work.order.find.all", {
       organizationCode: context.organizationCode,
       userRoles: context.userRoles,
+      userPermissions: context.userPermissions,
       filters: [
         { field: "woStatusCode", operator: "in", value: ["UNRELEASED"] },
       ],
@@ -228,32 +238,6 @@ describe("WO GET (e2e, NATS)", () => {
     expect(response.total).toBeGreaterThanOrEqual(2);
     for (const wo of response.workOrders) {
       expect(wo.woStatusCode).toBe("UNRELEASED");
-    }
-  });
-
-  it("supports legacy field woStatusCode", async () => {
-    const response = await sendPattern(context.client, "work.order.find.all", {
-      organizationCode: context.organizationCode,
-      userRoles: context.userRoles,
-      woStatusCode: "UNRELEASED",
-    });
-
-    expect(response.total).toBeGreaterThanOrEqual(2);
-    for (const wo of response.workOrders) {
-      expect(wo.woStatusCode).toBe("UNRELEASED");
-    }
-  });
-
-  it("supports legacy field workOrderType", async () => {
-    const response = await sendPattern(context.client, "work.order.find.all", {
-      organizationCode: context.organizationCode,
-      userRoles: context.userRoles,
-      workOrderType: "Planned",
-    });
-
-    expect(response.total).toBeGreaterThanOrEqual(1);
-    for (const wo of response.workOrders) {
-      expect(wo.workOrderType).toBe("Planned");
     }
   });
 
@@ -284,6 +268,7 @@ describe("WO GET (e2e, NATS)", () => {
       sendPattern(context.client, "work.order.find.all", {
         organizationCode: context.organizationCode,
         userRoles: context.userRoles,
+        userPermissions: context.userPermissions,
         filters: { field: "woStatusCode", operator: "eq", value: "RELEASED" },
       }),
       400,
@@ -296,6 +281,7 @@ describe("WO GET (e2e, NATS)", () => {
       sendPattern(context.client, "work.order.find.all", {
         organizationCode: context.organizationCode,
         userRoles: context.userRoles,
+        userPermissions: context.userPermissions,
         filters: [{ field: "bogusField", operator: "eq", value: "x" }],
       }),
       400,
@@ -308,6 +294,7 @@ describe("WO GET (e2e, NATS)", () => {
       sendPattern(context.client, "work.order.find.all", {
         organizationCode: context.organizationCode,
         userRoles: context.userRoles,
+        userPermissions: context.userPermissions,
         filters: [
           { field: "organizationCode", operator: "equals", value: "x" },
         ],
@@ -322,6 +309,7 @@ describe("WO GET (e2e, NATS)", () => {
       sendPattern(context.client, "work.order.find.all", {
         organizationCode: context.organizationCode,
         userRoles: context.userRoles,
+        userPermissions: context.userPermissions,
         order: [["bogusField", "DESC"]],
       }),
       400,
@@ -334,6 +322,7 @@ describe("WO GET (e2e, NATS)", () => {
       sendPattern(context.client, "work.order.find.all", {
         organizationCode: context.organizationCode,
         userRoles: context.userRoles,
+        userPermissions: context.userPermissions,
         limit: -1,
       }),
       400,
@@ -345,24 +334,42 @@ describe("WO GET (e2e, NATS)", () => {
       sendPattern(context.client, "work.order.find.all", {
         organizationCode: context.organizationCode,
         userRoles: context.userRoles,
+        userPermissions: context.userPermissions,
         offset: 1.5,
       }),
       400,
     );
   });
 
-  it("rejects subtype not authorized for role -> 403 SUBTYPE_NOT_ALLOWED_FOR_ROLE", async () => {
+  it("rejects find.all when mnt.work.orders.view is missing -> 403 MISSING_PERMISSION", async () => {
     await assertRpcError(
       sendPattern(context.client, "work.order.find.all", {
         organizationCode: context.organizationCode,
         userRoles: ["TECHNICIAN_MAINTENANCE_01"],
+        userPermissions: ["mnt.work.orders.create"],
         filters: [
           { field: "workOrderSubType", operator: "eq", value: "Preventive" },
         ],
       }),
       403,
-      "SUBTYPE_NOT_ALLOWED_FOR_ROLE",
+      "MISSING_PERMISSION",
     );
+  });
+
+  it("does not restrict subtype for viewers -> any role with view sees all subtypes", async () => {
+    const response = await sendPattern(context.client, "work.order.find.all", {
+      organizationCode: context.organizationCode,
+      userRoles: ["TECHNICIAN_MAINTENANCE_01"],
+      userPermissions: context.userPermissions,
+      filters: [
+        { field: "workOrderSubType", operator: "eq", value: "Preventive" },
+      ],
+    });
+
+    expect(response.total).toBeGreaterThanOrEqual(2);
+    for (const wo of response.workOrders) {
+      expect(wo.workOrderSubType).toBe("Preventive");
+    }
   });
 
   // ==================== FIND ALL - RESPONSE SEMANTICS ====================
@@ -371,6 +378,7 @@ describe("WO GET (e2e, NATS)", () => {
     const response = await sendPattern(context.client, "work.order.find.all", {
       organizationCode: context.organizationCode,
       userRoles: context.userRoles,
+      userPermissions: context.userPermissions,
       filters: [
         { field: "woStatusCode", operator: "eq", value: "NONEXISTENT_STATUS" },
       ],
@@ -384,6 +392,7 @@ describe("WO GET (e2e, NATS)", () => {
     const response = await sendPattern(context.client, "work.order.find.all", {
       organizationCode: context.organizationCode,
       userRoles: context.userRoles,
+      userPermissions: context.userPermissions,
     });
 
     expect(response.total).toBeGreaterThanOrEqual(1);
