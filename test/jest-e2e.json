@@ -10,5 +10,6 @@
     "^src/(.*)$": "<rootDir>/src/$1",
     "^generated/(.*)$": "<rootDir>/generated/$1",
     "^(\\./|\\.\\./)(.+)\\.js$": "$1$2"
-  }
+  },
+  "testTimeout": 30000
 }

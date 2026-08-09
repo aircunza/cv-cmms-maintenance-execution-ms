@@ -559,6 +559,45 @@ describe("WO Creation POST (e2e, NATS)", () => {
     );
   });
 
+  it("rejects when workOrderDescription > 240 chars", async () => {
+    await assertRpcError(
+      createWorkOrder(context, { workOrderDescription: "A".repeat(241) }),
+      400,
+      "must be shorter than or equal to 240 characters",
+    );
+  });
+
+  it("rejects when resourceSequenceNumber is not an integer", async () => {
+    await assertRpcError(
+      createWorkOrder(context, {
+        operations: [
+          {
+            operationName: "Bad Seq",
+            operationDescription: "Non-integer sequence",
+            operationSeqNumber: 10,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T08:00:00.000Z",
+            actualCompletionDate: "2025-11-21T10:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1.5,
+                plannedHours: 2,
+                actualHours: 2,
+              },
+            ],
+          },
+        ],
+      }),
+      400,
+      "must be a non-negative integer",
+    );
+  });
+
   it("rejects when operation actualStartDate >= actualCompletionDate", async () => {
     await assertRpcError(
       createWorkOrder(context, {

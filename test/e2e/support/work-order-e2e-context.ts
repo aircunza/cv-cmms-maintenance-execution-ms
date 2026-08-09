@@ -231,6 +231,34 @@ export async function updateWorkOrder(
   );
 }
 
+export function defaultCancelPayload(
+  context: WorkOrderE2eContext,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    workOrderCode: "",
+    organizationCode: context.organizationCode,
+    userPermissions: ["mnt.work.orders.cancel"],
+    userRoles: context.userRoles,
+    actorId: context.actor.id,
+    actorName: context.actor.username,
+    canceledReason: "Canceled by test",
+    ...overrides,
+  };
+}
+
+export async function cancelWorkOrder(
+  context: WorkOrderE2eContext,
+  workOrderCode: string | number,
+  overrides: Record<string, unknown> = {},
+): Promise<any> {
+  return sendPattern(
+    context.client,
+    "work.order.cancel",
+    defaultCancelPayload(context, { workOrderCode, ...overrides }),
+  );
+}
+
 export function createUpdateContext(
   baseContext: WorkOrderE2eContext,
   overrides: Partial<WorkOrderE2eContext> = {},
