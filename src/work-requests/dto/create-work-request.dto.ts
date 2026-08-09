@@ -3,14 +3,16 @@ import {
   IsOptional,
   IsNotEmpty,
   IsUUID,
+  IsIn,
   MaxLength,
+  IsArray,
 } from "class-validator";
 
 export class CreateWorkRequestDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(80)
-  assetCode: string;
+  assetCode!: string;
 
   @IsString()
   @IsOptional()
@@ -20,53 +22,33 @@ export class CreateWorkRequestDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(240)
-  issueDescription: string;
+  issueDescription!: string;
 
   @IsString()
-  @IsOptional()
-  @MaxLength(255)
-  workCenterCode?: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(255)
-  workCenterDescription?: string;
-
-  @IsOptional()
-  centerCostCode?: number;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(255)
-  workAreaCode?: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(255)
-  workAreaDescription?: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(50)
-  sector?: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(50)
-  subsector?: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(255)
-  organizationName?: string;
+  @IsNotEmpty()
+  @IsIn(["Y", "N"])
+  enableOracleWorkOrder!: string;
 }
 
 export class CreateWorkRequestMessageDto extends CreateWorkRequestDto {
   @IsUUID()
-  actorId: string;
+  actorId!: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(70)
-  actorName: string;
+  actorName!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  organizationCode!: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  userPermissions!: string[];
+
+  @IsArray()
+  @IsString({ each: true })
+  userRoles!: string[];
 }

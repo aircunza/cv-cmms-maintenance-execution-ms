@@ -30,6 +30,9 @@ describe("WO Request GET (e2e, NATS)", () => {
       requestId: seedWr3.workRequest.requestId,
       actorId: context.actor.id,
       actorName: context.actor.username,
+      organizationCode: context.organizationCode,
+      userPermissions: context.userPermissions,
+      userRoles: context.userRoles,
     });
   });
 
@@ -39,19 +42,40 @@ describe("WO Request GET (e2e, NATS)", () => {
     }
   });
 
+  it("finds a single work request by id", async () => {
+    const response = await sendPattern(
+      context.client,
+      "work.request.find.one",
+      {
+        requestId: seedWr1.workRequest.requestId,
+        organizationCode: context.organizationCode,
+        userRoles: context.userRoles,
+      },
+    );
+
+    expect(response.workRequest.requestId).toBe(seedWr1.workRequest.requestId);
+    expect(response.workRequest.issueDescription).toContain("case alpha");
+  });
+
+  it("returns 404 when work request does not exist", async () => {
+    await assertRpcError(
+      sendPattern(context.client, "work.request.find.one", {
+        requestId: 999999999,
+        organizationCode: context.organizationCode,
+        userRoles: context.userRoles,
+      }),
+      404,
+    );
+  });
+
   it("filters using eq operator", async () => {
     const response = await sendPattern(
       context.client,
       "work.request.find.all",
       {
-        filters: [
-          {
-            field: "organizationCode",
-            operator: "eq",
-            value: context.organizationCode,
-          },
-          { field: "statusCode", operator: "eq", value: "RELEASED" },
-        ],
+        organizationCode: context.organizationCode,
+        userRoles: context.userRoles,
+        filters: [{ field: "statusCode", operator: "eq", value: "RELEASED" }],
       },
     );
 
@@ -68,12 +92,9 @@ describe("WO Request GET (e2e, NATS)", () => {
       context.client,
       "work.request.find.all",
       {
+        organizationCode: context.organizationCode,
+        userRoles: context.userRoles,
         filters: [
-          {
-            field: "organizationCode",
-            operator: "eq",
-            value: context.organizationCode,
-          },
           { field: "issueDescription", operator: "like", value: "case beta" },
         ],
       },
@@ -95,12 +116,9 @@ describe("WO Request GET (e2e, NATS)", () => {
       context.client,
       "work.request.find.all",
       {
+        organizationCode: context.organizationCode,
+        userRoles: context.userRoles,
         filters: [
-          {
-            field: "organizationCode",
-            operator: "eq",
-            value: context.organizationCode,
-          },
           { field: "createdAt", operator: "gt", value: lowerBound },
           { field: "createdAt", operator: "lt", value: upperBound },
         ],
@@ -115,6 +133,8 @@ describe("WO Request GET (e2e, NATS)", () => {
       context.client,
       "work.request.find.all",
       {
+        organizationCode: context.organizationCode,
+        userRoles: context.userRoles,
         filters: [
           {
             field: "requestId",
@@ -132,18 +152,29 @@ describe("WO Request GET (e2e, NATS)", () => {
     expect(response.total).toBe(3);
   });
 
+  it("returns empty result set when other organization queries", async () => {
+    const response = await sendPattern(
+      context.client,
+      "work.request.find.all",
+      {
+        organizationCode: "E2E_ORG_WO_DIFF",
+        userRoles: context.userRoles,
+        filters: [],
+      },
+    );
+
+    expect(response.total).toBe(0);
+    expect(response.workRequests).toHaveLength(0);
+  });
+
   it("supports order, limit and offset", async () => {
     const response = await sendPattern(
       context.client,
       "work.request.find.all",
       {
-        filters: [
-          {
-            field: "organizationCode",
-            operator: "eq",
-            value: context.organizationCode,
-          },
-        ],
+        organizationCode: context.organizationCode,
+        userRoles: context.userRoles,
+        filters: [],
         order: [["requestId", "DESC"]],
         limit: 1,
         offset: 1,
@@ -158,6 +189,8 @@ describe("WO Request GET (e2e, NATS)", () => {
       context.client,
       "work.request.find.all",
       {
+        organizationCode: context.organizationCode,
+        userRoles: context.userRoles,
         filters: [
           {
             field: "issueDescription",
@@ -175,7 +208,13 @@ describe("WO Request GET (e2e, NATS)", () => {
   it("returns invalid filter data when filter payload is malformed", async () => {
     await assertRpcError(
       sendPattern(context.client, "work.request.find.all", {
-        filters: { field: "statusCode", operator: "eq", value: "RELEASED" },
+        organizationCode: context.organizationCode,
+        userRoles: context.userRoles,
+        filters: {
+          field: "statusCode",
+          operator: "eq",
+          value: "RELEASED",
+        },
       }),
       400,
       "Invalid filter data",

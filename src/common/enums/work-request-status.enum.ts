@@ -8,7 +8,7 @@ export type WorkRequestStatus = (typeof WR_STATUS)[keyof typeof WR_STATUS];
 
 export const WR_STATUS_TRANSITIONS: Record<string, string[]> = {
   RELEASED: ["COMPLETED", "CANCELED"],
-  COMPLETED: [],
+  COMPLETED: ["CANCELED"],
   CANCELED: [],
 };
 

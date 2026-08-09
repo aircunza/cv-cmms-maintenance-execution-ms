@@ -108,6 +108,7 @@ export class WorkOrdersController {
     dto: {
       workOrderCode: number | string;
       organizationCode: string;
+      userPermissions: string[];
       userRoles: string[];
       actorId: string;
       actorName: string;
@@ -117,6 +118,7 @@ export class WorkOrdersController {
     return this.workOrdersService.cancel(
       dto.workOrderCode,
       dto.organizationCode,
+      dto.userPermissions,
       dto.userRoles,
       dto.actorId,
       dto.actorName,

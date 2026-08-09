@@ -1,16 +1,22 @@
-import { IsString, IsOptional, MaxLength } from "class-validator";
+import {
+  IsString,
+  IsOptional,
+  IsNotEmpty,
+  MaxLength,
+  IsArray,
+} from "class-validator";
 
 export const WR_FIND_ALL_OPERATORS = ["eq", "like", "gt", "lt", "in"] as const;
 export type WorkRequestFindAllOperator = (typeof WR_FIND_ALL_OPERATORS)[number];
 
 export class WorkRequestFilterDto {
   @IsString()
-  field: string;
+  field!: string;
 
   @IsString()
-  operator: WorkRequestFindAllOperator;
+  operator!: WorkRequestFindAllOperator;
 
-  value: unknown;
+  value!: unknown;
 }
 
 export class FindAllWorkRequestDto {
@@ -26,24 +32,12 @@ export class FindAllWorkRequestDto {
   @IsOptional()
   offset?: number;
 
-  // Legacy fields are preserved for backwards compatibility with existing callers.
   @IsString()
-  @IsOptional()
-  @MaxLength(80)
-  assetCode?: string;
-
-  @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   @MaxLength(255)
-  organizationCode?: string;
+  organizationCode!: string;
 
-  @IsString()
-  @IsOptional()
-  @MaxLength(30)
-  statusCode?: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(255)
-  workAreaCode?: string;
+  @IsArray()
+  @IsString({ each: true })
+  userRoles!: string[];
 }

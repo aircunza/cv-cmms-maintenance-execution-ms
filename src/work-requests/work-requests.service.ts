@@ -4,17 +4,22 @@ import type { Prisma } from "generated/prisma/client";
 import { PrismaService } from "src/prisma.service";
 import {
   CreateWorkRequestMessageDto,
-  UpdateWorkRequestDto,
+  UpdateWorkRequestMessageDto,
   FindAllWorkRequestDto,
   WorkRequestFilterDto,
-  UpdateWorkRequestConditionDto,
-  UpdateWorkRequestDataDto,
+  WorkRequestReadDto,
+  WorkRequestIdMessageDto,
 } from "./dto";
-import { WR_STATUS, isValidWrTransition } from "src/common/enums";
+import {
+  WR_STATUS,
+  isValidWrTransition,
+  WO_STATUS,
+  OP_STATUS,
+} from "src/common/enums";
+import { WorkRequestPolicy } from "./policies/work-request.policy";
+import { WorkOrdersService } from "src/work-orders/work-orders.service";
 
 const INVALID_FILTER_DATA_MESSAGE = "Invalid filter data";
-const INVALID_UPDATE_DATA_MESSAGE = "Invalid update data";
-const INVALID_UPDATE_CONDITION_MESSAGE = "Invalid update condition";
 
 const FIND_ALL_FILTER_FIELDS = new Set([
   "requestId",
@@ -28,14 +33,6 @@ const FIND_ALL_FILTER_FIELDS = new Set([
   "releasedAt",
   "completedAt",
   "canceledAt",
-]);
-
-const UPDATE_CONDITION_FIELDS = new Set([
-  "requestId",
-  "assetCode",
-  "issueDescription",
-  "statusCode",
-  "organizationCode",
 ]);
 
 const STRING_FIELDS = new Set([
@@ -56,16 +53,40 @@ const DATE_FIELDS = new Set([
 ]);
 
 type WorkRequestFilterOperator = "eq" | "like" | "gt" | "lt" | "in";
-type WorkRequestConditionOperator = "eq" | "in";
+
+const CANCELED_VIA_WORK_REQUEST_REASON = "Canceled via work request";
+
+function toTitleCase(str: string): string {
+  return str
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
 
 @Injectable()
 export class WorkRequestsService {
   private readonly logger = new Logger(WorkRequestsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly policy: WorkRequestPolicy,
+    private readonly workOrdersService: WorkOrdersService,
+  ) {}
 
   async create(dto: CreateWorkRequestMessageDto) {
     try {
+      if (!dto.userPermissions.includes("mnt.work.request.create")) {
+        throw this.missingPermissionException();
+      }
+
+      if (!dto.userPermissions.includes("mnt.work.orders.create")) {
+        throw this.missingPermissionException();
+      }
+
+      if (!this.policy.canCreate(dto.userRoles)) {
+        throw this.roleNotAuthorizedException();
+      }
+
       const asset = await this.prisma.mntAsset.findFirst({
         where: { assetCode: dto.assetCode, isActive: "Y" },
       });
@@ -77,6 +98,13 @@ export class WorkRequestsService {
         });
       }
 
+      if (asset.organizationCode !== dto.organizationCode) {
+        throw new RpcException({
+          status: 403,
+          message: "ORGANIZATION_MISMATCH",
+        });
+      }
+
       const workRequest = await this.prisma.mntWorkRequest.create({
         data: {
           assetCode: dto.assetCode,
@@ -85,15 +113,13 @@ export class WorkRequestsService {
           issueDescription: dto.issueDescription,
           statusCode: WR_STATUS.RELEASED,
           releasedAt: new Date(),
-          workCenterCode: dto.workCenterCode ?? asset.workCenterCode,
-          workCenterDescription:
-            dto.workCenterDescription ?? asset.workCenterDescription,
-          centerCostCode: dto.centerCostCode ?? asset.centerCostCode,
-          workAreaCode: dto.workAreaCode ?? asset.workAreaCode,
-          workAreaDescription:
-            dto.workAreaDescription ?? asset.workAreaDescription,
-          sector: dto.sector ?? asset.sector,
-          subsector: dto.subsector ?? asset.subsector,
+          workCenterCode: asset.workCenterCode,
+          workCenterDescription: asset.workCenterDescription,
+          centerCostCode: asset.centerCostCode,
+          workAreaCode: asset.workAreaCode,
+          workAreaDescription: asset.workAreaDescription,
+          sector: asset.sector,
+          subsector: asset.subsector,
           organizationCode: asset.organizationCode,
           organizationName: asset.organizationName,
           createdBy: dto.actorId,
@@ -101,17 +127,43 @@ export class WorkRequestsService {
         },
       });
 
-      return { workRequest };
+      const workOrder = await this.workOrdersService.create({
+        workOrderDescription: dto.issueDescription,
+        assetCode: dto.assetCode,
+        workOrderType: "Not Planned",
+        workOrderSubType: "Emergency",
+        workOrderPriority: "1",
+        woStatusCode: WO_STATUS.RELEASED,
+        enableOracleWorkOrder: dto.enableOracleWorkOrder,
+        workRequestId: Number(workRequest.requestId),
+        actorId: dto.actorId,
+        actorName: dto.actorName,
+        organizationCode: dto.organizationCode,
+        userPermissions: dto.userPermissions,
+        userRoles: dto.userRoles,
+        operations: [this.defaultOperation(dto.actorId)],
+      });
+
+      return {
+        workRequest: this.mapToResponse(workRequest),
+        workOrder: workOrder.workOrder,
+      };
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({ status: 500, message: "Internal server error" });
     }
   }
 
-  async findOne(requestId: number) {
+  async findOne(dto: WorkRequestReadDto) {
     try {
+      this.validateReadContext(dto);
+
       const workRequest = await this.prisma.mntWorkRequest.findFirst({
-        where: { requestId: BigInt(requestId) },
+        where: {
+          requestId: BigInt(dto.requestId),
+          organizationCode: dto.organizationCode,
+        },
+        include: { workOrders: true },
       });
 
       if (!workRequest) {
@@ -121,7 +173,7 @@ export class WorkRequestsService {
         });
       }
 
-      return { workRequest };
+      return { workRequest: this.mapToResponse(workRequest) };
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({ status: 500, message: "Internal server error" });
@@ -130,120 +182,313 @@ export class WorkRequestsService {
 
   async findAll(dto: FindAllWorkRequestDto) {
     try {
+      this.validateReadContext(dto);
+
       const where = this.buildFindAllWhere(dto);
       const orderBy = this.buildFindAllOrder(dto.order);
       const take = this.parsePaginationValue(dto.limit);
       const skip = this.parsePaginationValue(dto.offset);
 
       const [workRequests, total] = await this.prisma.$transaction([
-        this.prisma.mntWorkRequest.findMany({ where, orderBy, take, skip }),
+        this.prisma.mntWorkRequest.findMany({
+          where,
+          orderBy,
+          take,
+          skip,
+          include: { workOrders: true },
+        }),
         this.prisma.mntWorkRequest.count({ where }),
       ]);
 
-      return { workRequests, total };
+      return {
+        workRequests: workRequests.map((wr) => this.mapToResponse(wr)),
+        total,
+      };
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({ status: 500, message: "Internal server error" });
     }
   }
 
-  async update(
-    dto: UpdateWorkRequestDto & {
-      requestId?: number;
-      actorId: string;
-      actorName: string;
-    },
-  ) {
+  async update(dto: UpdateWorkRequestMessageDto) {
     try {
-      const { data, condition } = this.normalizeBulkUpdatePayload(dto);
-      const where = this.buildUpdateWhere(condition);
-
-      const existingRows = await this.prisma.mntWorkRequest.findMany({ where });
-
-      if (existingRows.length === 0) {
-        return { affectedRows: 0, updatedInstances: [] };
+      if (!dto.userPermissions.includes("mnt.work.request.update")) {
+        throw this.missingPermissionException();
       }
 
-      if (data.statusCode !== undefined) {
-        for (const row of existingRows) {
-          if (
-            row.statusCode !== data.statusCode &&
-            !isValidWrTransition(row.statusCode, data.statusCode)
-          ) {
-            throw new RpcException({
-              status: 400,
-              message: `Invalid status transition from ${row.statusCode} to ${data.statusCode}`,
-            });
-          }
-        }
+      const existing = await this.prisma.mntWorkRequest.findFirst({
+        where: { requestId: BigInt(dto.requestId) },
+      });
+
+      if (!existing) {
+        throw new RpcException({
+          status: 404,
+          message: "Work request not found",
+        });
       }
 
       const now = new Date();
-      const updateData: Prisma.MntWorkRequestUpdateManyMutationInput = {
-        ...(data.issueDescription !== undefined
-          ? { issueDescription: data.issueDescription }
-          : {}),
-        ...(data.statusCode !== undefined
-          ? { statusCode: data.statusCode }
-          : {}),
-        ...(data.statusCode === WR_STATUS.COMPLETED
-          ? { completedAt: now }
-          : {}),
-        ...(data.statusCode === WR_STATUS.CANCELED ? { canceledAt: now } : {}),
-        updatedBy: dto.actorId,
-        updatedByName: dto.actorName,
-        updatedAt: now,
-      };
-
-      const requestIds = existingRows.map((row) => row.requestId);
-
-      const result = await this.prisma.mntWorkRequest.updateMany({
-        where: { requestId: { in: requestIds } },
-        data: updateData,
+      const updated = await this.prisma.mntWorkRequest.update({
+        where: { requestId: BigInt(dto.requestId) },
+        data: {
+          ...(dto.issueDescription !== undefined
+            ? { issueDescription: dto.issueDescription }
+            : {}),
+          updatedBy: dto.actorId,
+          updatedByName: dto.actorName,
+          updatedAt: now,
+        },
+        include: { workOrders: true },
       });
 
-      const updatedInstances = await this.prisma.mntWorkRequest.findMany({
-        where: { requestId: { in: requestIds } },
-        orderBy: [{ createdAt: "desc" }, { requestId: "desc" }],
-      });
-
-      return { affectedRows: result.count, updatedInstances };
+      return { workRequest: this.mapToResponse(updated) };
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({ status: 500, message: "Internal server error" });
+    }
+  }
+
+  async complete(dto: WorkRequestIdMessageDto) {
+    try {
+      if (!dto.userPermissions.includes("mnt.work.request.complete")) {
+        throw this.missingPermissionException();
+      }
+
+      if (!this.policy.canComplete(dto.userRoles)) {
+        throw this.roleNotAuthorizedException();
+      }
+
+      const existing = await this.prisma.mntWorkRequest.findFirst({
+        where: {
+          requestId: BigInt(dto.requestId),
+          organizationCode: dto.organizationCode,
+        },
+      });
+
+      if (!existing) {
+        throw new RpcException({
+          status: 404,
+          message: "Work request not found",
+        });
+      }
+
+      if (existing.statusCode !== WR_STATUS.RELEASED) {
+        throw new RpcException({
+          status: 400,
+          message: `Cannot complete work request from status ${existing.statusCode}`,
+        });
+      }
+
+      const updated = await this.prisma.mntWorkRequest.update({
+        where: { requestId: BigInt(dto.requestId) },
+        data: {
+          statusCode: WR_STATUS.COMPLETED,
+          completedAt: new Date(),
+          updatedBy: dto.actorId,
+          updatedByName: dto.actorName,
+          updatedAt: new Date(),
+        },
+        include: { workOrders: true },
+      });
+
+      return { workRequest: this.mapToResponse(updated) };
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({ status: 500, message: "Internal server error" });
+    }
+  }
+
+  async cancel(dto: WorkRequestIdMessageDto) {
+    try {
+      if (!dto.userPermissions.includes("mnt.work.request.cancel")) {
+        throw this.missingPermissionException();
+      }
+
+      if (!dto.userPermissions.includes("mnt.work.orders.cancel")) {
+        throw this.missingPermissionException();
+      }
+
+      if (!this.policy.canCancel(dto.userRoles)) {
+        throw this.roleNotAuthorizedException();
+      }
+
+      const existing = await this.prisma.mntWorkRequest.findFirst({
+        where: {
+          requestId: BigInt(dto.requestId),
+          organizationCode: dto.organizationCode,
+        },
+      });
+
+      if (!existing) {
+        throw new RpcException({
+          status: 404,
+          message: "Work request not found",
+        });
+      }
+
+      if (existing.statusCode === WR_STATUS.CANCELED) {
+        throw new RpcException({
+          status: 400,
+          message: "Work request is already canceled",
+        });
+      }
+
+      if (!isValidWrTransition(existing.statusCode, WR_STATUS.CANCELED)) {
+        throw new RpcException({
+          status: 400,
+          message: `Cannot cancel work request from status ${existing.statusCode}`,
+        });
+      }
+
+      const updated = await this.prisma.mntWorkRequest.update({
+        where: { requestId: BigInt(dto.requestId) },
+        data: {
+          statusCode: WR_STATUS.CANCELED,
+          canceledAt: new Date(),
+          updatedBy: dto.actorId,
+          updatedByName: dto.actorName,
+          updatedAt: new Date(),
+        },
+      });
+
+      const associatedWorkOrder = await this.prisma.mntWorkOrder.findFirst({
+        where: { workRequestId: BigInt(dto.requestId) },
+      });
+
+      if (associatedWorkOrder) {
+        await this.workOrdersService.cancel(
+          associatedWorkOrder.workOrderCode.toString(),
+          dto.organizationCode,
+          dto.userPermissions,
+          dto.userRoles,
+          dto.actorId,
+          dto.actorName,
+          CANCELED_VIA_WORK_REQUEST_REASON,
+        );
+      }
+
+      const refreshed = await this.prisma.mntWorkRequest.findFirst({
+        where: { requestId: BigInt(dto.requestId) },
+        include: { workOrders: true },
+      });
+
+      return { workRequest: this.mapToResponse(refreshed ?? updated) };
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({ status: 500, message: "Internal server error" });
+    }
+  }
+
+  private defaultOperation(actorId: string) {
+    const now = new Date();
+    const oneHourLater = new Date(now.getTime() + 3600000);
+
+    return {
+      operationName: "DEFAULT_OPERATION",
+      operationDescription: "Auto-generated default operation",
+      operationSeqNumber: 1,
+      createdBy: actorId,
+      operationStatus: OP_STATUS.RELEASED,
+      operationType: "Internal",
+      operationSubType: "Emergency",
+      actualStartDate: now.toISOString(),
+      actualCompletionDate: oneHourLater.toISOString(),
+      workOrderOperationResource: [
+        {
+          resourceCode: "DEFAULT_RESOURCE",
+          resourceSequenceNumber: 0,
+          plannedHours: 1,
+          actualHours: 1,
+          principalFlag: "N",
+        },
+      ],
+    };
+  }
+
+  private mapToResponse(wr: any) {
+    return {
+      requestId: wr.requestId?.toString(),
+      assetCode: wr.assetCode,
+      assetShortDescription: wr.assetShortDescription,
+      issueDescription: wr.issueDescription,
+      statusCode: wr.statusCode,
+      statusLabel: toTitleCase(wr.statusCode),
+      requestedAt: wr.requestedAt,
+      completedAt: wr.completedAt,
+      releasedAt: wr.releasedAt,
+      canceledAt: wr.canceledAt,
+      workCenterCode: wr.workCenterCode,
+      workCenterDescription: wr.workCenterDescription,
+      centerCostCode: wr.centerCostCode,
+      workAreaCode: wr.workAreaCode,
+      workAreaDescription: wr.workAreaDescription,
+      sector: wr.sector,
+      subsector: wr.subsector,
+      organizationCode: wr.organizationCode,
+      organizationName: wr.organizationName,
+      createdBy: wr.createdBy,
+      createdByName: wr.createdByName,
+      updatedBy: wr.updatedBy,
+      updatedByName: wr.updatedByName,
+      createdAt: wr.createdAt,
+      updatedAt: wr.updatedAt,
+      workOrders: wr.workOrders?.map((wo: any) => ({
+        workOrderCode: wo.workOrderCode?.toString(),
+        workOrderDescription: wo.workOrderDescription,
+        workOrderType: wo.workOrderType,
+        workOrderSubType: wo.workOrderSubType,
+        workOrderPriority: wo.workOrderPriority,
+        woStatusCode: wo.woStatusCode,
+      })),
+    };
+  }
+
+  private validateReadContext(dto: {
+    organizationCode?: string;
+    userRoles?: string[];
+  }) {
+    if (
+      typeof dto.organizationCode !== "string" ||
+      dto.organizationCode.trim().length === 0
+    ) {
+      throw new RpcException({
+        status: 400,
+        message: "organizationCode is required",
+      });
+    }
+
+    if (
+      !Array.isArray(dto.userRoles) ||
+      dto.userRoles.some(
+        (role) => typeof role !== "string" || role.trim().length === 0,
+      )
+    ) {
+      throw new RpcException({
+        status: 400,
+        message: "userRoles must be a non-empty array",
+      });
     }
   }
 
   private buildFindAllWhere(
     dto: FindAllWorkRequestDto,
   ): Prisma.MntWorkRequestWhereInput {
-    if (!dto.filters) {
-      return {
-        ...(dto.assetCode ? { assetCode: { contains: dto.assetCode } } : {}),
-        ...(dto.organizationCode
-          ? { organizationCode: { contains: dto.organizationCode } }
-          : {}),
-        ...(dto.statusCode ? { statusCode: dto.statusCode } : {}),
-        ...(dto.workAreaCode
-          ? { workAreaCode: { contains: dto.workAreaCode } }
-          : {}),
-      };
+    const conditions: Prisma.MntWorkRequestWhereInput[] = [
+      { organizationCode: dto.organizationCode },
+    ];
+
+    if (dto.filters) {
+      if (!Array.isArray(dto.filters)) {
+        throw this.invalidFilterDataException();
+      }
+
+      const filters = dto.filters.map((filter) =>
+        this.mapFilterToWhereCondition(filter),
+      );
+      conditions.push(...filters);
     }
 
-    if (!Array.isArray(dto.filters)) {
-      throw this.invalidFilterDataException();
-    }
-
-    if (dto.filters.length === 0) {
-      return {};
-    }
-
-    const andConditions: Prisma.MntWorkRequestWhereInput[] = dto.filters.map(
-      (filter) =>
-        this.mapFilterToWhereCondition(filter, FIND_ALL_FILTER_FIELDS),
-    );
-
-    return { AND: andConditions };
+    return conditions.length > 0 ? { AND: conditions } : {};
   }
 
   private buildFindAllOrder(
@@ -289,7 +534,6 @@ export class WorkRequestsService {
 
   private mapFilterToWhereCondition(
     filter: WorkRequestFilterDto,
-    allowedFields: Set<string>,
   ): Prisma.MntWorkRequestWhereInput {
     if (!filter || typeof filter !== "object") {
       throw this.invalidFilterDataException();
@@ -299,7 +543,7 @@ export class WorkRequestsService {
 
     if (
       typeof field !== "string" ||
-      !allowedFields.has(field) ||
+      !FIND_ALL_FILTER_FIELDS.has(field) ||
       typeof operator !== "string"
     ) {
       throw this.invalidFilterDataException();
@@ -353,134 +597,6 @@ export class WorkRequestsService {
       default:
         throw this.invalidFilterDataException();
     }
-  }
-
-  private normalizeBulkUpdatePayload(
-    dto: UpdateWorkRequestDto & { requestId?: number },
-  ): {
-    data: UpdateWorkRequestDataDto;
-    condition: UpdateWorkRequestConditionDto[];
-  } {
-    if (dto.data !== undefined || dto.condition !== undefined) {
-      if (!dto.data || typeof dto.data !== "object") {
-        throw this.invalidUpdateDataException();
-      }
-
-      const allowedUpdateFields = ["issueDescription", "statusCode"] as const;
-      const dataKeys = Object.keys(dto.data);
-
-      if (dataKeys.length === 0) {
-        throw this.invalidUpdateDataException();
-      }
-
-      const hasUnknownDataField = dataKeys.some(
-        (key) =>
-          !allowedUpdateFields.includes(
-            key as (typeof allowedUpdateFields)[number],
-          ),
-      );
-
-      if (hasUnknownDataField) {
-        throw this.invalidUpdateDataException();
-      }
-
-      if (!Array.isArray(dto.condition) || dto.condition.length === 0) {
-        throw this.invalidUpdateConditionException();
-      }
-
-      return {
-        data: dto.data,
-        condition: dto.condition,
-      };
-    }
-
-    if (dto.requestId === undefined || dto.requestId === null) {
-      throw this.invalidUpdateConditionException();
-    }
-
-    if (
-      dto.assetShortDescription !== undefined ||
-      dto.workCenterCode !== undefined ||
-      dto.workCenterDescription !== undefined ||
-      dto.centerCostCode !== undefined ||
-      dto.workAreaCode !== undefined ||
-      dto.workAreaDescription !== undefined ||
-      dto.sector !== undefined ||
-      dto.subsector !== undefined ||
-      dto.organizationName !== undefined
-    ) {
-      throw this.invalidUpdateDataException();
-    }
-
-    const legacyData: UpdateWorkRequestDataDto = {
-      ...(dto.issueDescription !== undefined
-        ? { issueDescription: dto.issueDescription }
-        : {}),
-      ...(dto.statusCode !== undefined ? { statusCode: dto.statusCode } : {}),
-    };
-
-    if (Object.keys(legacyData).length === 0) {
-      throw this.invalidUpdateDataException();
-    }
-
-    return {
-      data: legacyData,
-      condition: [{ field: "requestId", operator: "eq", value: dto.requestId }],
-    };
-  }
-
-  private buildUpdateWhere(
-    condition: UpdateWorkRequestConditionDto[],
-  ): Prisma.MntWorkRequestWhereInput {
-    if (!Array.isArray(condition) || condition.length === 0) {
-      throw this.invalidUpdateConditionException();
-    }
-
-    const andConditions: Prisma.MntWorkRequestWhereInput[] = condition.map(
-      (item) => {
-        if (!item || typeof item !== "object") {
-          throw this.invalidUpdateConditionException();
-        }
-
-        const { field, operator, value } = item;
-
-        if (
-          typeof field !== "string" ||
-          !UPDATE_CONDITION_FIELDS.has(field) ||
-          typeof operator !== "string"
-        ) {
-          throw this.invalidUpdateConditionException();
-        }
-
-        const normalizedOperator =
-          operator.toLowerCase() as WorkRequestConditionOperator;
-
-        if (normalizedOperator === "eq") {
-          const normalizedValue = this.normalizeFieldValue(field, value);
-          return {
-            [field]: normalizedValue,
-          } as Prisma.MntWorkRequestWhereInput;
-        }
-
-        if (normalizedOperator === "in") {
-          if (!Array.isArray(value)) {
-            throw this.invalidUpdateConditionException();
-          }
-
-          const normalizedValues = value.map((itemValue) =>
-            this.normalizeFieldValue(field, itemValue),
-          );
-
-          return {
-            [field]: { in: normalizedValues },
-          } as Prisma.MntWorkRequestWhereInput;
-        }
-
-        throw this.invalidUpdateConditionException();
-      },
-    );
-
-    return { AND: andConditions };
   }
 
   private normalizeFieldValue(
@@ -569,62 +685,17 @@ export class WorkRequestsService {
     });
   }
 
-  private invalidUpdateDataException(): RpcException {
+  private missingPermissionException(): RpcException {
     return new RpcException({
-      status: 400,
-      message: INVALID_UPDATE_DATA_MESSAGE,
+      status: 403,
+      message: "MISSING_PERMISSION",
     });
   }
 
-  private invalidUpdateConditionException(): RpcException {
+  private roleNotAuthorizedException(): RpcException {
     return new RpcException({
-      status: 400,
-      message: INVALID_UPDATE_CONDITION_MESSAGE,
+      status: 403,
+      message: "ROLE_NOT_AUTHORIZED",
     });
-  }
-
-  async cancel(requestId: number, actorId: string, actorName: string) {
-    try {
-      const existing = await this.prisma.mntWorkRequest.findFirst({
-        where: { requestId: BigInt(requestId) },
-      });
-
-      if (!existing) {
-        throw new RpcException({
-          status: 404,
-          message: "Work request not found",
-        });
-      }
-
-      if (existing.statusCode === WR_STATUS.CANCELED) {
-        throw new RpcException({
-          status: 400,
-          message: "Work request is already canceled",
-        });
-      }
-
-      if (!isValidWrTransition(existing.statusCode, WR_STATUS.CANCELED)) {
-        throw new RpcException({
-          status: 400,
-          message: `Cannot cancel work request from status ${existing.statusCode}`,
-        });
-      }
-
-      const updated = await this.prisma.mntWorkRequest.update({
-        where: { requestId: BigInt(requestId) },
-        data: {
-          statusCode: WR_STATUS.CANCELED,
-          canceledAt: new Date(),
-          updatedBy: actorId,
-          updatedByName: actorName,
-          updatedAt: new Date(),
-        },
-      });
-
-      return { workRequest: updated };
-    } catch (error) {
-      if (error instanceof RpcException) throw error;
-      throw new RpcException({ status: 500, message: "Internal server error" });
-    }
   }
 }

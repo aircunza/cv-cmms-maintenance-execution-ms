@@ -31,6 +31,8 @@ export type WorkRequestE2eContext = {
     code: string;
     username: string;
   };
+  userPermissions: string[];
+  userRoles: string[];
 };
 
 export async function setupWorkRequestE2eContext(): Promise<WorkRequestE2eContext> {
@@ -81,6 +83,15 @@ export async function setupWorkRequestE2eContext(): Promise<WorkRequestE2eContex
     organizationCode: mockOrganizations[0].code,
     organizationName: mockOrganizations[0].name,
     actor: mockUsers[0],
+    userPermissions: [
+      "mnt.work.request.create",
+      "mnt.work.orders.create",
+      "mnt.work.request.update",
+      "mnt.work.request.complete",
+      "mnt.work.request.cancel",
+      "mnt.work.orders.cancel",
+    ],
+    userRoles: ["MANUFACTURING_FACILITATOR"],
   };
 }
 
@@ -143,15 +154,40 @@ export async function assertRpcError(
   }
 }
 
+export function defaultWorkRequestPayload(
+  context: WorkRequestE2eContext,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    assetCode: "E2E_WR_AST_001",
+    issueDescription: `E2E issue ${Date.now()}-${Math.random()}`,
+    enableOracleWorkOrder: "N",
+    actorId: context.actor.id,
+    actorName: context.actor.username,
+    organizationCode: context.organizationCode,
+    userPermissions: context.userPermissions,
+    userRoles: context.userRoles,
+    ...overrides,
+  };
+}
+
 export async function createWorkRequest(
   context: WorkRequestE2eContext,
   overrides: Record<string, unknown> = {},
 ): Promise<any> {
-  return sendPattern(context.client, "work.request.create", {
-    assetCode: "E2E_WR_AST_001",
-    issueDescription: `E2E issue ${Date.now()}-${Math.random()}`,
-    actorId: context.actor.id,
-    actorName: context.actor.username,
+  return sendPattern(
+    context.client,
+    "work.request.create",
+    defaultWorkRequestPayload(context, overrides),
+  );
+}
+
+export function createWorkRequestContext(
+  baseContext: WorkRequestE2eContext,
+  overrides: Partial<WorkRequestE2eContext> = {},
+): WorkRequestE2eContext {
+  return {
+    ...baseContext,
     ...overrides,
-  });
+  };
 }

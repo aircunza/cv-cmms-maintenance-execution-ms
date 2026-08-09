@@ -1,5 +1,6 @@
 import {
   createWorkRequest,
+  createWorkRequestContext,
   setupWorkRequestE2eContext,
   teardownWorkRequestE2eContext,
   sendPattern,
@@ -7,10 +8,9 @@ import {
   type WorkRequestE2eContext,
 } from "./support/work-request-e2e-context";
 
-describe("WO Request PUT (e2e, NATS)", () => {
+describe("WO Request Update (e2e, NATS)", () => {
   let context: WorkRequestE2eContext;
-  let wrA: any;
-  let wrB: any;
+  let wr: any;
 
   beforeAll(async () => {
     context = await setupWorkRequestE2eContext();
@@ -23,105 +23,67 @@ describe("WO Request PUT (e2e, NATS)", () => {
   });
 
   beforeEach(async () => {
-    wrA = await createWorkRequest(context, {
-      issueDescription: `Bulk update source A ${Date.now()}`,
-    });
-
-    wrB = await createWorkRequest(context, {
-      issueDescription: `Bulk update source B ${Date.now()}`,
+    wr = await createWorkRequest(context, {
+      issueDescription: `Update source ${Date.now()}`,
     });
   });
 
-  it("updates multiple work requests using condition in + eq", async () => {
+  it("updates the issue description of a work request", async () => {
     const response = await sendPattern(context.client, "work.request.update", {
-      data: {
-        statusCode: "COMPLETED",
-        issueDescription: "Bulk updated description",
-      },
-      condition: [
-        {
-          field: "requestId",
-          operator: "in",
-          value: [wrA.workRequest.requestId, wrB.workRequest.requestId],
-        },
-        {
-          field: "organizationCode",
-          operator: "eq",
-          value: context.organizationCode,
-        },
-      ],
+      requestId: wr.workRequest.requestId,
+      issueDescription: "Updated issue description",
       actorId: context.actor.id,
       actorName: context.actor.username,
+      userPermissions: context.userPermissions,
     });
 
-    expect(response.affectedRows).toBe(2);
-    expect(response.updatedInstances).toHaveLength(2);
-    expect(
-      response.updatedInstances.every(
-        (item: any) =>
-          item.statusCode === "COMPLETED" &&
-          item.issueDescription === "Bulk updated description",
-      ),
-    ).toBe(true);
+    expect(response.workRequest.requestId).toBe(wr.workRequest.requestId);
+    expect(response.workRequest.issueDescription).toBe(
+      "Updated issue description",
+    );
+    expect(response.workRequest.updatedByName).toBe(context.actor.username);
   });
 
-  it("rejects update when data includes non-updatable fields", async () => {
+  it("rejects update when update permission is missing", async () => {
+    const restrictedContext = createWorkRequestContext(context, {
+      userPermissions: ["mnt.work.request.create"],
+    });
+
     await assertRpcError(
       sendPattern(context.client, "work.request.update", {
-        data: {
-          issueDescription: "Should fail",
-          assetShortDescription: "NOT_ALLOWED",
-        },
-        condition: [
-          {
-            field: "requestId",
-            operator: "eq",
-            value: wrA.workRequest.requestId,
-          },
-        ],
+        requestId: wr.workRequest.requestId,
+        issueDescription: "Should fail",
         actorId: context.actor.id,
         actorName: context.actor.username,
+        userPermissions: restrictedContext.userPermissions,
       }),
-      400,
-      "Invalid update data",
+      403,
     );
   });
 
-  it("rejects update when condition operator is unsupported", async () => {
+  it("rejects update when work request does not exist", async () => {
     await assertRpcError(
       sendPattern(context.client, "work.request.update", {
-        data: { issueDescription: "Should fail" },
-        condition: [
-          {
-            field: "requestId",
-            operator: "like",
-            value: wrA.workRequest.requestId,
-          },
-        ],
+        requestId: 999999999,
+        issueDescription: "Should fail",
         actorId: context.actor.id,
         actorName: context.actor.username,
+        userPermissions: context.userPermissions,
       }),
-      400,
-      "Invalid update condition",
+      404,
     );
   });
 
-  it("rejects update when in operator receives non-array value", async () => {
+  it("rejects update when description exceeds max length", async () => {
     await assertRpcError(
       sendPattern(context.client, "work.request.update", {
-        data: { issueDescription: "Should fail" },
-        condition: [
-          {
-            field: "requestId",
-            operator: "in",
-            value: wrA.workRequest.requestId,
-          },
-        ],
+        requestId: wr.workRequest.requestId,
+        issueDescription: "A".repeat(241),
         actorId: context.actor.id,
         actorName: context.actor.username,
+        userPermissions: context.userPermissions,
       }),
       400,
-      "Invalid update condition",
     );
   });
 });

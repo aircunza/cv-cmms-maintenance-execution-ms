@@ -107,14 +107,14 @@ export class WorkOrdersService {
         });
       }
 
-      if (!dto.userPermissions.includes('mnt.work.orders.create')) {
+      if (!dto.userPermissions.includes("mnt.work.orders.create")) {
         throw new RpcException({
           status: 403,
-          message: 'MISSING_PERMISSION',
+          message: "MISSING_PERMISSION",
         });
       }
 
-      if (dto.enableOracleWorkOrder === 'Y') {
+      if (dto.enableOracleWorkOrder === "Y") {
         const oracleCheck = this.oraclePolicy.validateCreate(
           dto.userPermissions,
           dto.userRoles,
@@ -657,7 +657,9 @@ export class WorkOrdersService {
         });
       }
 
-      if (!this.canAccessSubType(dto.userRoles, workOrder.workOrderSubType ?? '')) {
+      if (
+        !this.canAccessSubType(dto.userRoles, workOrder.workOrderSubType ?? "")
+      ) {
         throw new RpcException({
           status: 403,
           message: "SUBTYPE_NOT_ALLOWED_FOR_ROLE",
@@ -984,21 +986,24 @@ export class WorkOrdersService {
     try {
       this.validateReadContext(dto);
 
-      if (typeof dto.enableOracleWorkOrder !== 'string' || !['Y', 'N'].includes(dto.enableOracleWorkOrder)) {
+      if (
+        typeof dto.enableOracleWorkOrder !== "string" ||
+        !["Y", "N"].includes(dto.enableOracleWorkOrder)
+      ) {
         throw new RpcException({
           status: 400,
           message: 'enableOracleWorkOrder is required and must be "Y" or "N"',
         });
       }
 
-      if (!dto.userPermissions.includes('mnt.work.orders.update')) {
+      if (!dto.userPermissions.includes("mnt.work.orders.update")) {
         throw new RpcException({
           status: 403,
-          message: 'MISSING_PERMISSION',
+          message: "MISSING_PERMISSION",
         });
       }
 
-      if (dto.enableOracleWorkOrder === 'Y') {
+      if (dto.enableOracleWorkOrder === "Y") {
         const oracleResult = this.oraclePolicy.validateUpdate(
           dto.userPermissions,
           dto.userRoles,
@@ -1033,8 +1038,8 @@ export class WorkOrdersService {
         dto.workOrderType !== undefined ||
         dto.workOrderSubType !== undefined
       ) {
-        const type = dto.workOrderType ?? existing.workOrderType ?? '';
-        const subType = dto.workOrderSubType ?? existing.workOrderSubType ?? '';
+        const type = dto.workOrderType ?? existing.workOrderType ?? "";
+        const subType = dto.workOrderSubType ?? existing.workOrderSubType ?? "";
 
         if (!isValidTypeSubtypeCombination(type, subType)) {
           throw new RpcException({
@@ -1297,6 +1302,7 @@ export class WorkOrdersService {
   async cancel(
     workOrderCode: number | string,
     organizationCode: string,
+    userPermissions: string[],
     userRoles: string[],
     actorId: string,
     actorName: string,
@@ -1305,10 +1311,20 @@ export class WorkOrdersService {
     try {
       this.validateReadContext({ organizationCode, userRoles });
 
-      if (typeof canceledReason !== 'string' || canceledReason.trim().length === 0) {
+      if (
+        typeof canceledReason !== "string" ||
+        canceledReason.trim().length === 0
+      ) {
         throw new RpcException({
           status: 400,
           message: "canceledReason is required",
+        });
+      }
+
+      if (canceledReason.length > 240) {
+        throw new RpcException({
+          status: 400,
+          message: "canceledReason must not exceed 240 characters",
         });
       }
 
@@ -1328,6 +1344,31 @@ export class WorkOrdersService {
           status: 403,
           message: "ORGANIZATION_MISMATCH",
         });
+      }
+
+      if (!userPermissions.includes("mnt.work.orders.cancel")) {
+        throw new RpcException({
+          status: 403,
+          message: "MISSING_PERMISSION",
+        });
+      }
+
+      if (
+        existing.enableOracleWorkOrder === "Y" &&
+        this.oraclePolicy.isOracleEnabled()
+      ) {
+        if (!userPermissions.includes("oracle.mnt.work.orders.cancel")) {
+          throw new RpcException({
+            status: 403,
+            message: "MISSING_ORACLE_PERMISSION",
+          });
+        }
+        if (!this.oraclePolicy.hasAllowedRole(userRoles)) {
+          throw new RpcException({
+            status: 403,
+            message: "MISSING_ORACLE_PERMISSION",
+          });
+        }
       }
 
       if (!isValidWoTransition(existing.woStatusCode, WO_STATUS.CANCELED)) {

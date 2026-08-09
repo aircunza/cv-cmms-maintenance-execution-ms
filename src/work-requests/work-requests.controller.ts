@@ -3,9 +3,10 @@ import { MessagePattern, Payload } from "@nestjs/microservices";
 import { WorkRequestsService } from "./work-requests.service";
 import {
   CreateWorkRequestMessageDto,
-  UpdateWorkRequestDto,
+  UpdateWorkRequestMessageDto,
   FindAllWorkRequestDto,
-  WorkRequestIdDto,
+  WorkRequestReadDto,
+  WorkRequestIdMessageDto,
 } from "./dto";
 
 @Controller("work-requests")
@@ -18,35 +19,27 @@ export class WorkRequestsController {
   }
 
   @MessagePattern("work.request.find.one")
-  findOne(@Payload() dto: WorkRequestIdDto) {
-    return this.workRequestsService.findOne(dto.requestId);
+  findOne(@Payload() dto: WorkRequestReadDto) {
+    return this.workRequestsService.findOne(dto);
   }
 
   @MessagePattern("work.request.find.all")
-  findAll(@Payload() dto: FindAllWorkRequestDto = {}) {
+  findAll(@Payload() dto: FindAllWorkRequestDto) {
     return this.workRequestsService.findAll(dto);
   }
 
   @MessagePattern("work.request.update")
-  update(
-    @Payload()
-    dto: UpdateWorkRequestDto & {
-      requestId?: number;
-      actorId: string;
-      actorName: string;
-    },
-  ) {
+  update(@Payload() dto: UpdateWorkRequestMessageDto) {
     return this.workRequestsService.update(dto);
   }
 
+  @MessagePattern("work.request.complete")
+  complete(@Payload() dto: WorkRequestIdMessageDto) {
+    return this.workRequestsService.complete(dto);
+  }
+
   @MessagePattern("work.request.cancel")
-  cancel(
-    @Payload() dto: { requestId: number; actorId: string; actorName: string },
-  ) {
-    return this.workRequestsService.cancel(
-      dto.requestId,
-      dto.actorId,
-      dto.actorName,
-    );
+  cancel(@Payload() dto: WorkRequestIdMessageDto) {
+    return this.workRequestsService.cancel(dto);
   }
 }
