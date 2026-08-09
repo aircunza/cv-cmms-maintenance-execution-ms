@@ -1542,10 +1542,20 @@ Cancels a Work Order and all its operations (terminal state).
 
 ### Gateway-Injected Fields
 
-| Field      | Type   | Description                          |
-| ---------- | ------ | ------------------------------------ |
-| actorId    | string | User ID from JWT payload             |
-| actorName  | string | User name from JWT payload           |
+| Field            | Type     | Description                                                       |
+| ---------------- | -------- | ----------------------------------------------------------------- |
+| actorId          | string   | User ID from JWT payload                                          |
+| actorName        | string   | User name from JWT payload                                        |
+| organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
+| userPermissions  | string[] | Permissions from the user's role(s) in the target organization    |
+| userRoles        | string[] | Role codes from the user's assignments in the target organization |
+
+### Required Permissions
+
+| Permission | Description |
+|------------|-------------|
+| `mnt.work.orders.cancel` | Required to cancel a Work Order |
+| `oracle.mnt.work.orders.cancel` | Required when Oracle integration is enabled and the WO was synced to Oracle |
 
 ### Request
 
@@ -1557,10 +1567,20 @@ Cancels a Work Order and all its operations (terminal state).
 
 **R-WO-CN-01**
 
+IF `userPermissions` does not include `mnt.work.orders.cancel`,  
+THEN the system SHALL reject the request with a 403 status and error code `MISSING_PERMISSION`.
+
+**R-WO-CN-02**
+
+IF `enableOracleWorkOrder = "Y"` and `ENABLE_ORACLE_WORK_ORDER_SYSTEM = "Y"` and `userPermissions` does not include `oracle.mnt.work.orders.cancel`,  
+THEN the system SHALL reject the request with a 403 status and error code `MISSING_ORACLE_PERMISSION`.
+
+**R-WO-CN-03**
+
 IF the Work Order does not exist,  
 THEN the system SHALL reject the request with a 404 status.
 
-**R-WO-CN-02**
+**R-WO-CN-04**
 
 IF the Work Order's current status does not allow transition to `CANCELED`,  
 THEN the system SHALL reject the request with a 400 status.
@@ -1583,14 +1603,14 @@ Allowed transitions to `CANCELED`:
 | CANCELED         | [] (terminal)                |
 | PENDING_APPROVAL | UNRELEASED                   |
 
-**R-WO-CN-03**
+**R-WO-CN-05**
 
 IF `canceledReason` is missing or empty,  
 THEN the system SHALL reject the request with a 400 status.
 
 ### Processing
 
-**R-WO-CN-04**
+**R-WO-CN-06**
 
 WHEN a Work Order is canceled,  
 the system SHALL:
@@ -1606,7 +1626,7 @@ Returns the updated Work Order with `woStatusCode: "CANCELED"`, `canceledDate` s
 
 ### Errors
 
-**R-WO-CN-05**
+**R-WO-CN-07**
 
 IF an unexpected error occurs,  
 THEN the system SHALL return an internal server error response.
