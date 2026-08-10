@@ -6,7 +6,7 @@
 
 NATS Pattern: `work.order.create` (via gateway)
 
-Gateway endpoint: POST /mnt-work-order
+Gateway endpoint: POST /api/v1/work-orders
 
 ### Purpose
 
@@ -81,7 +81,9 @@ The system-level environment variable `ENABLE_ORACLE_WORK_ORDER_SYSTEM` acts as 
 | workOrderSubType      | string                      | 30         | Work order sub-type (e.g., "Preventive", "Corrective", "Emergency").      |
 | workOrderPriority     | string ("1"\|"2"\|"3"\|"4") | -          | Priority level (1=highest, 4=lowest).                                     |
 | enableOracleWorkOrder | string ("Y"\|"N")           | 1          | Flag to enable Oracle integration.                                        |
-| operations            | array                       | -          | Array of operations. If empty or missing, a default operation is created. |
+| operations            | array                       | -          | Array of operations. Required and non-empty when the Work Order is created from the gateway. When created from a Work Request, it is auto-completed with a default operation by the work-request handler. |
+
+> **Creation source of `operations`:** When the Work Order is created **from the gateway** (`work.order.create`), `operations` is a mandatory, non-empty array that the client SHALL send; the gateway rejects requests without at least one operation before forwarding. When the Work Order is created **from a Work Request**, the work-request client does NOT send `operations`; the work-request handler injects a single default operation (`DEFAULT_OPERATION` with one `DEFAULT_RESOURCE` resource) before invoking creation.
 
 #### Gateway-Injected Fields (Work Order Level)
 
@@ -514,8 +516,8 @@ THEN the system SHALL reject the request.
 
 **R-WO-CR-25**
 
-WHEN no `operations` array is provided or it is empty,  
-the system SHALL create a default operation with:
+WHEN `operations` is missing or empty AND the caller is an internal direct service call (not the gateway, not the work-request handler),  
+the create service SHALL fall back to a default operation with:
 
 - operationName: "DEFAULT_OPERATION"
 - operationDescription: "Auto-generated default operation"
@@ -526,6 +528,8 @@ the system SHALL create a default operation with:
 - actualStartDate: current time (or provided actualStartDate)
 - actualCompletionDate: start + 1 hour
 - One default resource with principalFlag "N"
+
+This fallback is a defensive measure for internal callers. With the gateway, `operations` is REQUIRED and non-empty (see create request), so the public API never reaches this path. When creation originates from a Work Request, the work-request handler supplies its own default operation (operationStatus "RELEASED") as described in the work-request specification, so the fallback is not exercised there either.
 
 **R-WO-CR-26**
 
@@ -838,7 +842,7 @@ THEN the system SHALL return an internal server error response.
 
 NATS Pattern: `work.order.find.all` (via gateway)
 
-Gateway endpoint: GET /mnt-work-order
+Gateway endpoint: GET /api/v1/work-orders
 
 ### Purpose
 
@@ -1013,7 +1017,7 @@ THEN the system SHALL return an internal server error response.
 
 NATS Pattern: `work.order.find.one` (via gateway)
 
-Gateway endpoint: GET /mnt-work-order/:workOrderCode
+Gateway endpoint: GET /api/v1/work-orders/:workOrderCode
 
 ### Purpose
 
@@ -1113,7 +1117,7 @@ THEN the system SHALL return an internal server error response.
 
 NATS Pattern: `work.order.update` (via gateway)
 
-Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode`
+Gateway endpoint: `PATCH /api/v1/work-orders/:workOrderCode`
 
 ### Purpose
 
@@ -1300,7 +1304,7 @@ THEN the system SHALL return an internal server error response.
 
 NATS Pattern: `work.order.release` (via gateway)
 
-Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode/release`
+Gateway endpoint: `PATCH /api/v1/work-orders/:workOrderCode/release`
 
 ### Purpose
 
@@ -1358,7 +1362,7 @@ THEN the system SHALL return an internal server error response.
 
 NATS Pattern: `work.order.hold` (via gateway)
 
-Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode/hold`
+Gateway endpoint: `PATCH /api/v1/work-orders/:workOrderCode/hold`
 
 ### Purpose
 
@@ -1421,7 +1425,7 @@ THEN the system SHALL return an internal server error response.
 
 NATS Pattern: `work.order.complete` (via gateway)
 
-Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode/complete`
+Gateway endpoint: `PATCH /api/v1/work-orders/:workOrderCode/complete`
 
 ### Purpose
 
@@ -1479,7 +1483,7 @@ THEN the system SHALL return an internal server error response.
 
 NATS Pattern: `work.order.close` (via gateway)
 
-Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode/close`
+Gateway endpoint: `PATCH /api/v1/work-orders/:workOrderCode/close`
 
 ### Purpose
 
@@ -1544,7 +1548,7 @@ THEN the system SHALL return an internal server error response.
 
 NATS Pattern: `work.order.cancel` (via gateway)
 
-Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode/cancel`
+Gateway endpoint: `PATCH /api/v1/work-orders/:workOrderCode/cancel`
 
 ### Purpose
 
@@ -1649,7 +1653,7 @@ THEN the system SHALL return an internal server error response.
 
 NATS Pattern: `work.order.pending-approval` (via gateway)
 
-Gateway endpoint: `PATCH /mnt-work-order/:workOrderCode/pending-approval`
+Gateway endpoint: `PATCH /api/v1/work-orders/:workOrderCode/pending-approval`
 
 ### Purpose
 
