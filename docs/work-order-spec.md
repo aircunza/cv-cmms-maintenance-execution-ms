@@ -143,10 +143,12 @@ Each resource in `workOrderOperationResource` must contain:
 | Field                  | Type              | Description                                                                                |
 | ---------------------- | ----------------- | ------------------------------------------------------------------------------------------ |
 | resourceCode           | string            | Resource identifier.                                                                       |
-| resourceSequenceNumber | integer (>= 0)    | Sequence number for grouping resources. Resources with the same sequence work in parallel. |
+| resourceSequenceNumber | integer (>= 0)    | Sequence number for Oracle Fusion integration. Does NOT affect calculations in this system. |
 | plannedHours           | number (> 0)      | Planned hours for the resource.                                                            |
 | actualHours            | number (> 0)      | Actual hours for the resource. Must be greater than 0.                                     |
 | principalFlag          | string ("Y"\|"N") | Principal flag indicator.                                                                  |
+| actualStartDate        | string (ISO 8601) | Actual start date for the resource. Must be before actualCompletionDate.                   |
+| actualCompletionDate   | string (ISO 8601) | Actual completion date for the resource. Must be after actualStartDate.                    |
 
 ##### Optional Fields (Resource Level)
 
@@ -174,9 +176,9 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
 | Field                 | Type          | Description                                                     |
 | --------------------- | ------------- | --------------------------------------------------------------- |
 | workOrderCode         | BigInt        | Auto-generated unique identifier.                               |
-| actualHours           | Float         | Sum of all operations' actualHours (calculated from resources). |
-| totalManHours         | Float         | Total man hours from operations.                                |
-| totalSupplierHours    | Float         | Total supplier hours from operations.                           |
+| actualHours           | Float         | Calculated: SUM of all ACTIVE operations' actualHours.          |
+| totalManHours         | Float         | Total man hours from operations (operationType = "Internal").   |
+| totalSupplierHours    | Float         | Total supplier hours from operations (operationType = "Supplier"). |
 | createdAt             | DateTime      | Record creation timestamp.                                      |
 | updatedAt             | DateTime      | Last update timestamp.                                          |
 | updatedBy             | string        | Last updated by user.                                           |
@@ -184,8 +186,8 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
 | createdBy             | string (UUID) | User identifier who creates the work order.                     |
 | createdByName         | string        | Creator user name.                                              |
 | woStatusLabel         | string        | Title Case label for woStatusCode (e.g., "Unreleased").         |
-| actualStartDate       | DateTime      | Work order actual start date (calculated).                      |
-| actualCompletionDate  | DateTime      | Work order actual completion date (calculated).                 |
+| actualStartDate       | DateTime      | Calculated: MIN of all ACTIVE operations' actualStartDate. Editable via reprogram endpoint. |
+| actualCompletionDate  | DateTime      | Calculated: MAX of all ACTIVE operations' actualCompletionDate. |
 | workCenterCode        | string        | Work center code (inferred from asset).                         |
 | workCenterDescription | string        | Work center description (inferred from asset).                  |
 | centerCostCode        | integer       | Cost center code (inferred from asset).                         |
@@ -209,7 +211,9 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
 | Field                 | Type     | Description                                                |
 | --------------------- | -------- | ---------------------------------------------------------- |
 | operationCode         | BigInt   | Auto-generated unique identifier.                          |
-| actualHours           | Float    | Calculated from resources.                                 |
+| actualHours           | Float    | Calculated: SUM of all ACTIVE resources' actualHours.      |
+| actualStartDate       | DateTime | Calculated: MIN of all ACTIVE resources' actualStartDate.  |
+| actualCompletionDate  | DateTime | Calculated: MAX of all ACTIVE resources' actualCompletionDate. |
 | operationStatusLabel  | string   | Title Case label for operationStatus (e.g., "Unreleased"). |
 | createdAt             | DateTime | Record creation timestamp.                                 |
 | updatedAt             | DateTime | Last update timestamp.                                     |
@@ -252,6 +256,7 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
 | updatedByName            | string            | Last updated by user name.        |
 | createdAt                | DateTime          | Record creation timestamp.        |
 | updatedAt                | DateTime          | Last update timestamp.            |
+| status                   | string            | "ACTIVE" or "CANCELED". Default "ACTIVE". |
 
 #### System Generated / Calculated Fields (Material Level)
 
@@ -309,14 +314,18 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
           "resourceCode": "RES-001",
           "resourceSequenceNumber": 1,
           "plannedHours": 2,
-          "actualHours": 2
+          "actualHours": 2,
+          "actualStartDate": "2025-11-21T08:00:00.000Z",
+          "actualCompletionDate": "2025-11-21T10:00:00.000Z"
         },
         {
           "principalFlag": "N",
           "resourceCode": "RES-002",
           "resourceSequenceNumber": 1,
           "plannedHours": 3,
-          "actualHours": 3
+          "actualHours": 3,
+          "actualStartDate": "2025-11-21T08:00:00.000Z",
+          "actualCompletionDate": "2025-11-21T11:00:00.000Z"
         }
       ],
       "workOrderOperationMaterial": [
@@ -344,14 +353,18 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
           "resourceCode": "RES-001",
           "resourceSequenceNumber": 1,
           "plannedHours": 2,
-          "actualHours": 2
+          "actualHours": 2,
+          "actualStartDate": "2025-11-21T11:00:00.000Z",
+          "actualCompletionDate": "2025-11-21T13:00:00.000Z"
         },
         {
           "principalFlag": "N",
           "resourceCode": "RES-003",
           "resourceSequenceNumber": 2,
           "plannedHours": 1,
-          "actualHours": 1
+          "actualHours": 1,
+          "actualStartDate": "2025-11-21T13:00:00.000Z",
+          "actualCompletionDate": "2025-11-21T14:00:00.000Z"
         }
       ]
     }
@@ -487,8 +500,8 @@ THEN the system SHALL reject the request.
 
 **R-WO-CR-22**
 
-IF an operation with a lower `operationSeqNumber` has an `actualStartDate` later than an operation with a higher `operationSeqNumber`,  
-THEN the system SHALL reject the request (operations must follow sequential order).
+IF a resource's `actualStartDate` is not before its `actualCompletionDate`,  
+THEN the system SHALL reject the request.
 
 **R-WO-CR-23**
 
@@ -527,7 +540,7 @@ the create service SHALL fall back to a default operation with:
 - operationSubType: same as parent Work Order's workOrderSubType
 - actualStartDate: current time (or provided actualStartDate)
 - actualCompletionDate: start + 1 hour
-- One default resource with principalFlag "N"
+- One default resource with principalFlag "N", actualHours > 0, actualStartDate < actualCompletionDate
 
 This fallback is a defensive measure for internal callers. With the gateway, `operations` is REQUIRED and non-empty (see create request), so the public API never reaches this path. When creation originates from a Work Request, the work-request handler supplies its own default operation (operationStatus "RELEASED") as described in the work-request specification, so the fallback is not exercised there either.
 
@@ -539,19 +552,20 @@ the system SHALL:
 1. Validate all DTO-level constraints
 2. Validate type/subtype combination
 3. Validate `operationSubType` matches `workOrderSubType` for all operations
-4. Create WorkOperation entities from the operations array
-5. Calculate each operation's `actualHours` from its resources:
-   - Resources with the same `resourceSequenceNumber` work in PARALLEL → take MAX(actualHours)
-   - Resources with different `resourceSequenceNumber` work SEQUENTIALLY → SUM the MAX of each group
-6. Recalculate each operation's `actualCompletionDate` as `actualStartDate + calculated actualHours`
-7. Validate operations sequential order (unique seqNumbers, chronological start dates)
-8. Calculate Work Order `actualHours` as the sum of all operations' actualHours
-9. Calculate Work Order `actualStartDate` as the earliest among all operations
-10. Calculate Work Order `actualCompletionDate` as the latest among all operations
-11. Validate status/operationStatus compatibility
-12. Infer `assetShortDescription`, `workCenterCode`, `workCenterDescription`, `centerCostCode`, `workAreaCode`, `workAreaDescription`, `sector`, `subsector`, `organizationName` from the `assetCode`
-13. Persist the Work Order and all associated operations, resources, and materials
-14. If `enableOracleWorkOrder = "Y"` and Oracle integration is enabled, publish a `WorkOrderCreatedEvent` to the outbox with the Oracle-mapped payload
+4. Validate each resource's `actualHours > 0` and `actualStartDate < actualCompletionDate`
+5. Create WorkOperation entities from the operations array
+6. Create all resource entities with `status = "ACTIVE"`
+7. Calculate each operation's `actualHours` as the SUM of all its resources' `actualHours`
+8. Calculate each operation's `actualStartDate` as the MIN of all its resources' `actualStartDate`
+9. Calculate each operation's `actualCompletionDate` as the MAX of all its resources' `actualCompletionDate`
+10. Calculate Work Order `actualHours` as the SUM of all operations' `actualHours`
+11. Calculate Work Order `actualStartDate` as the MIN of all operations' `actualStartDate`
+12. Calculate Work Order `actualCompletionDate` as the MAX of all operations' `actualCompletionDate`
+13. Calculate `totalManHours` (sum of resources where operationType = "Internal") and `totalSupplierHours` (sum of resources where operationType = "Supplier")
+14. Validate status/operationStatus compatibility
+15. Infer `assetShortDescription`, `workCenterCode`, `workCenterDescription`, `centerCostCode`, `workAreaCode`, `workAreaDescription`, `sector`, `subsector`, `organizationName` from the `assetCode`
+16. Persist the Work Order and all associated operations, resources, and materials
+17. If `enableOracleWorkOrder = "Y"` and Oracle integration is enabled, publish a `WorkOrderCreatedEvent` to the outbox with the Oracle-mapped payload
 
 **R-WO-CR-27**
 
@@ -569,27 +583,27 @@ The `assetCode` from the Work Order level SHALL be propagated to all operations,
 
 **BR-WO-CR-01**
 
-Resources with the same `resourceSequenceNumber` within an operation work in PARALLEL. The operation's actualHours for that sequence group equals the MAXIMUM actualHours among those resources.
+The Work Order's `actualHours` represents the SUM of work hours from all ACTIVE operations, NOT the calendar time difference between start and completion dates.
 
 **BR-WO-CR-02**
 
-Resources with different `resourceSequenceNumber` values within an operation work SEQUENTIALLY. The operation's total actualHours equals the SUM of the MAX actualHours of each sequence group.
+Operations within a Work Order MAY have overlapping `actualStartDate` and `actualCompletionDate` ranges. Date overlap between operations is allowed.
 
 **BR-WO-CR-03**
 
-The Work Order's `actualHours` represents the sum of work hours from all operations, NOT the calendar time difference between start and completion dates.
+The backend is the single source of truth (SSOT) for all timing calculations at the Work Order and Operation levels. Frontend-provided dates for operations and resources are accepted as input but always recalculated and overwritten based on resource data. The Work Order's `actualStartDate` is the only date field that can be manually set via the reprogram endpoint, which propagates a delta to all child operations and resources.
 
 **BR-WO-CR-04**
 
-Operations can run in parallel (same `actualStartDate`) but must respect sequence order — an operation with a higher `operationSeqNumber` cannot start before one with a lower `operationSeqNumber`.
+At creation time, each operation's `operationSubType` MUST match the parent Work Order's `workOrderSubType`. After creation, operations may progress independently and their `operationSubType` may differ as they complete.
 
 **BR-WO-CR-05**
 
-The backend is the single source of truth (SSOT) for all timing calculations. Frontend-provided dates are accepted as input but always recalculated and overwritten based on resource data.
+A Work Order MUST have at least one ACTIVE operation at all times. The system SHALL NOT allow canceling the last active operation.
 
 **BR-WO-CR-06**
 
-At creation time, each operation's `operationSubType` MUST match the parent Work Order's `workOrderSubType`. After creation, operations may progress independently and their `operationSubType` may differ as they complete.
+The `resourceSequenceNumber` field is used exclusively for Oracle Fusion integration to indicate parallel or sequential execution. It does NOT affect any calculation of `actualHours`, `actualStartDate`, or `actualCompletionDate` within this system.
 
 ### Status Transitions
 
@@ -695,6 +709,9 @@ the system SHALL return a 201 status with the created Work Order wrapped in a `w
             "plannedHours": 2,
             "actualHours": 2,
             "principalFlag": "Y",
+            "actualStartDate": "2025-11-21T08:00:00.000Z",
+            "actualCompletionDate": "2025-11-21T10:00:00.000Z",
+            "status": "ACTIVE",
             "organizationCode": "ORG001",
             "createdBy": "550e8400-e29b-41d4-a716-446655440001",
             "createdByName": "John Doe",
@@ -711,6 +728,9 @@ the system SHALL return a 201 status with the created Work Order wrapped in a `w
             "plannedHours": 3,
             "actualHours": 3,
             "principalFlag": "N",
+            "actualStartDate": "2025-11-21T08:00:00.000Z",
+            "actualCompletionDate": "2025-11-21T11:00:00.000Z",
+            "status": "ACTIVE",
             "organizationCode": "ORG001",
             "createdBy": "550e8400-e29b-41d4-a716-446655440001",
             "createdByName": "John Doe",
@@ -774,6 +794,9 @@ the system SHALL return a 201 status with the created Work Order wrapped in a `w
             "plannedHours": 2,
             "actualHours": 2,
             "principalFlag": "Y",
+            "actualStartDate": "2025-11-21T11:00:00.000Z",
+            "actualCompletionDate": "2025-11-21T13:00:00.000Z",
+            "status": "ACTIVE",
             "organizationCode": "ORG001",
             "createdBy": "550e8400-e29b-41d4-a716-446655440001",
             "createdByName": "John Doe",
@@ -790,6 +813,9 @@ the system SHALL return a 201 status with the created Work Order wrapped in a `w
             "plannedHours": 1,
             "actualHours": 1,
             "principalFlag": "N",
+            "actualStartDate": "2025-11-21T13:00:00.000Z",
+            "actualCompletionDate": "2025-11-21T14:00:00.000Z",
+            "status": "ACTIVE",
             "organizationCode": "ORG001",
             "createdBy": "550e8400-e29b-41d4-a716-446655440001",
             "createdByName": "John Doe",
@@ -986,11 +1012,13 @@ the system SHALL return:
 Each Work Order in `workOrders` SHALL include full nested data:
 
 - Work Order fields
-- All operations
-- All operation resources
+- All ACTIVE operations (excludes operations with `status = "CANCELED"`)
+- All ACTIVE resources within each operation (excludes resources with `status = "CANCELED"`)
 - All operation materials
 - `woStatusCode` and `woStatusLabel`
 - `operationStatus` and `operationStatusLabel`
+
+> To include canceled operations and resources, the query payload MAY include `includeCanceled: "Y"`.
 
 ### Errors
 
@@ -1077,8 +1105,10 @@ the system SHALL:
 1. Find the Work Order by `workOrderCode`
 2. Validate organization ownership against injected `organizationCode`
 3. Validate read permission using injected `userPermissions` (`mnt.work.orders.view`)
-4. Load all related operations, resources, and materials
+4. Load all ACTIVE operations, ACTIVE resources, and materials
 5. Return the mapped response including status labels and BigInt string serialization
+
+> To include canceled operations and resources, the query payload MAY include `includeCanceled: "Y"`.
 
 ### Response
 
@@ -1089,8 +1119,8 @@ the system SHALL return a `workOrder` object including:
 
 - All Work Order fields
 - `woStatusCode` and `woStatusLabel`
-- All operations with `operationStatus` and `operationStatusLabel`
-- All resources and materials
+- All ACTIVE operations with `operationStatus` and `operationStatusLabel`
+- All ACTIVE resources and materials
 
 ### Errors
 
@@ -1605,6 +1635,11 @@ Allowed transitions to `CANCELED`:
 - `RELEASED` → `CANCELED`
 - `ON_HOLD` → `CANCELED`
 
+**R-WO-CN-04B**
+
+IF the Work Order has only one ACTIVE operation,  
+THEN the system SHALL allow the cancellation (the operation will be canceled along with the WO).
+
 ### Full Status Transition Reference
 
 | From Status      | Allowed Transitions To       |
@@ -1633,6 +1668,8 @@ the system SHALL:
 2. Set `canceledDate` to the current timestamp
 3. Set `canceledReason` to the provided value
 4. Set all operations' `operationStatus` to `CANCELED`
+5. Set all resources' `status` to `CANCELED`
+6. Persist all changes within a single transaction
 
 ### Response
 
@@ -1641,6 +1678,91 @@ Returns the updated Work Order with `woStatusCode: "CANCELED"`, `canceledDate` s
 ### Errors
 
 **R-WO-CN-07**
+
+IF an unexpected error occurs,  
+THEN the system SHALL return an internal server error response.
+
+---
+
+## Reprogram Work Order
+
+### Communication
+
+NATS Pattern: `work.order.reprogram` (via gateway)
+
+Gateway endpoint: `PATCH /api/v1/work-orders/:workOrderCode/reprogram`
+
+### Purpose
+
+Reprograms the `actualStartDate` of a Work Order by applying a date delta to all associated operations and resources. This is the ONLY endpoint that allows manual modification of `actualStartDate` at the Work Order level.
+
+### Gateway-Injected Fields
+
+| Field            | Type     | Description                                                       |
+| ---------------- | -------- | ----------------------------------------------------------------- |
+| actorId          | string   | User ID from JWT payload                                          |
+| actorName        | string   | User name from JWT payload                                        |
+| organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
+| userPermissions  | string[] | Permissions from the user's role(s) in the target organization    |
+| userRoles        | string[] | Role codes from the user's assignments in the target organization |
+
+### Request
+
+| Field              | Type            | Required | Description                                                    |
+| ------------------ | --------------- | -------- | -------------------------------------------------------------- |
+| newActualStartDate | string (ISO 8601) | Yes    | The new actual start date for the Work Order.                  |
+
+### Validations
+
+**R-WO-RP-01**
+
+IF the Work Order does not exist,  
+THEN the system SHALL reject the request with a 404 status.
+
+**R-WO-RP-02**
+
+IF `newActualStartDate` is missing or not a valid ISO 8601 datetime,  
+THEN the system SHALL reject the request with a 400 status.
+
+**R-WO-RP-03**
+
+IF the Work Order's current status is `CANCELED` or `CLOSED`,  
+THEN the system SHALL reject the request with a 400 status.
+
+### Processing
+
+**R-WO-RP-04**
+
+WHEN a valid reprogram request is received,  
+the system SHALL:
+
+1. Calculate the delta: `delta = newActualStartDate - current actualStartDate`
+2. Apply the delta to all ACTIVE operations:
+   - Operation `actualStartDate` = current `actualStartDate` + delta
+   - Operation `actualCompletionDate` = current `actualCompletionDate` + delta
+3. Apply the delta to all ACTIVE resources within each ACTIVE operation:
+   - Resource `actualStartDate` = current `actualStartDate` + delta
+   - Resource `actualCompletionDate` = current `actualCompletionDate` + delta
+4. Set the Work Order's `actualStartDate` to `newActualStartDate`
+5. Recalculate the Work Order's `actualCompletionDate` as the MAX of all ACTIVE operations' (new) `actualCompletionDate`
+6. Set `updatedBy`, `updatedByName`, and `updatedAt` on the Work Order, all affected operations, and all affected resources
+7. Persist all changes within a single transaction
+
+### Response
+
+**R-WO-RP-05**
+
+WHEN the reprogram is successful,  
+the system SHALL return a 200 status with the updated Work Order including:
+
+- The new `actualStartDate`
+- The recalculated `actualCompletionDate`
+- All operations with updated dates
+- All resources with updated dates
+
+### Errors
+
+**R-WO-RP-06**
 
 IF an unexpected error occurs,  
 THEN the system SHALL return an internal server error response.
