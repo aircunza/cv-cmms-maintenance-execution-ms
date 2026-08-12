@@ -4,14 +4,14 @@
 
 All endpoints in this module are accessed via NATS patterns through the gateway.
 
-| Action | NATS Pattern | Gateway Endpoint |
-|--------|-------------|------------------|
-| Create Work Request | `work.request.create` | POST /wo-request |
-| Get Work Request By ID | `work.request.find.one` | GET /wo-request/:id |
-| Get All Work Requests | `work.request.find.all` | GET /wo-request |
-| Update Description | `work.request.update` | PATCH /wo-request/:id |
-| Complete Work Request | `work.request.complete` | PATCH /wo-request/:id/complete |
-| Cancel Work Request | `work.request.cancel` | PATCH /wo-request/:id/cancel |
+| Action                 | NATS Pattern            | Gateway Endpoint               |
+| ---------------------- | ----------------------- | ------------------------------ |
+| Create Work Request    | `work.request.create`   | POST /wo-request               |
+| Get Work Request By ID | `work.request.find.one` | GET /wo-request/:id            |
+| Get All Work Requests  | `work.request.find.all` | GET /wo-request                |
+| Update Description     | `work.request.update`   | PATCH /wo-request/:id          |
+| Complete Work Request  | `work.request.complete` | PATCH /wo-request/:id/complete |
+| Cancel Work Request    | `work.request.cancel`   | PATCH /wo-request/:id/cancel   |
 
 ---
 
@@ -43,10 +43,10 @@ Only the **MANUFACTURING_FACILITATOR** role is authorized to create Work Request
 
 #### Required Permissions
 
-| Permission | Description |
-|------------|-------------|
-| `mnt.work.request.create` | Required to create a Work Request |
-| `mnt.work.orders.create` | Required to create the associated Work Order |
+| Permission                      | Description                                                                   |
+| ------------------------------- | ----------------------------------------------------------------------------- |
+| `mnt.work.request.create`       | Required to create a Work Request                                             |
+| `mnt.work.orders.create`        | Required to create the associated Work Order                                  |
 | `oracle.mnt.work.orders.create` | Required when `enableOracleWorkOrder = "Y"` and Oracle integration is enabled |
 
 #### Oracle Work Order Authorization
@@ -60,11 +60,11 @@ When `enableOracleWorkOrder = "Y"` and the system-level `ENABLE_ORACLE_WORK_ORDE
 
 #### Required Fields
 
-| Field                 | Type              | Max Length | Description                              |
-| --------------------- | ----------------- | ---------- | ---------------------------------------- |
-| assetCode             | string            | 80         | Asset identifier.                        |
-| issueDescription      | string            | 240        | Description of the reported issue.       |
-| enableOracleWorkOrder | string ("Y"\|"N")| 1          | Flag to enable Oracle integration.       |
+| Field                 | Type              | Max Length | Description                        |
+| --------------------- | ----------------- | ---------- | ---------------------------------- |
+| assetCode             | string            | 80         | Asset identifier.                  |
+| issueDescription      | string            | 240        | Description of the reported issue. |
+| enableOracleWorkOrder | string ("Y"\|"N") | 1          | Flag to enable Oracle integration. |
 
 #### Optional Fields
 
@@ -103,15 +103,17 @@ These fields are generated or managed by the system and SHALL NOT be provided wh
 
 When a Work Request is created, the system automatically creates an associated Work Order with the following fixed values:
 
-| Field | Value |
-|-------|-------|
-| workOrderDescription | Same as `issueDescription` from the Work Request |
-| workOrderType | `"Not Planned"` |
-| workOrderSubType | `"Emergency"` |
-| workOrderPriority | `"1"` |
-| woStatusCode | `"RELEASED"` |
+| Field                 | Value                                              |
+| --------------------- | -------------------------------------------------- |
+| workOrderDescription  | Same as `issueDescription` from the Work Request   |
+| workOrderType         | `"Not Planned"`                                    |
+| workOrderSubType      | `"Emergency"`                                      |
+| workOrderPriority     | `"1"`                                              |
+| woStatusCode          | `"RELEASED"`                                       |
 | enableOracleWorkOrder | Same as the Work Request's `enableOracleWorkOrder` |
-| operations | Single default operation with one resource |
+| operations            | Single default operation with one resource         |
+
+> **Initial data requirement (`DEFAULT_RESOURCE`):** The default operation referenced above uses a single resource with `resourceCode = "DEFAULT_RESOURCE"`. The `mnt_human_resources` table SHALL contain at least one active human resource with `resource_code = 'DEFAULT_RESOURCE'` per environment; without it, creating a Work Request fails with an FK constraint violation when inserting the operation's resource usage.
 
 #### Example Request Payload
 
@@ -334,24 +336,24 @@ Updates the `issueDescription` of a Work Request.
 
 ### Gateway-Injected Fields
 
-| Field            | Type     | Description                                                       |
-| ---------------- | -------- | ----------------------------------------------------------------- |
-| actorId          | string   | User ID from JWT payload                                          |
-| actorName        | string   | User name from JWT payload                                        |
+| Field     | Type   | Description                |
+| --------- | ------ | -------------------------- |
+| actorId   | string | User ID from JWT payload   |
+| actorName | string | User name from JWT payload |
 
 ### Required Permissions
 
-| Permission | Description |
-|------------|-------------|
+| Permission                | Description                                   |
+| ------------------------- | --------------------------------------------- |
 | `mnt.work.request.update` | Required to update a Work Request description |
 
 ### Request
 
 #### Editable Fields
 
-| Field            | Type   | Max Length | Description                        |
-| ---------------- | ------ | ---------- | ---------------------------------- |
-| issueDescription | string | 240        | Updated description of the issue.  |
+| Field            | Type   | Max Length | Description                       |
+| ---------------- | ------ | ---------- | --------------------------------- |
+| issueDescription | string | 240        | Updated description of the issue. |
 
 ### Validations
 
@@ -397,33 +399,33 @@ Transitions a Work Request from `RELEASED` to `COMPLETED` status. This action do
 
 ### Gateway-Injected Fields
 
-| Field      | Type   | Description                          |
-| ---------- | ------ | ------------------------------------ |
-| actorId    | string | User ID from JWT payload             |
-| actorName  | string | User name from JWT payload           |
+| Field     | Type   | Description                |
+| --------- | ------ | -------------------------- |
+| actorId   | string | User ID from JWT payload   |
+| actorName | string | User name from JWT payload |
 
 ### Required Permissions
 
-| Permission | Description |
-|------------|-------------|
+| Permission                  | Description                         |
+| --------------------------- | ----------------------------------- |
 | `mnt.work.request.complete` | Required to complete a Work Request |
 
 ### Role Restriction
 
 The following roles are authorized to complete a Work Request:
 
-| Role |
-|------|
-| MANUFACTURING_FACILITATOR |
-| TECHNICIAN_MAINTENANCE_01 |
-| TECHNICIAN_MAINTENANCE_02 |
-| PLANNER_MAINTENANCE_01 |
-| PLANNER_MAINTENANCE_02 |
+| Role                       |
+| -------------------------- |
+| MANUFACTURING_FACILITATOR  |
+| TECHNICIAN_MAINTENANCE_01  |
+| TECHNICIAN_MAINTENANCE_02  |
+| PLANNER_MAINTENANCE_01     |
+| PLANNER_MAINTENANCE_02     |
 | COORDINATOR_MAINTENANCE_01 |
 | COORDINATOR_MAINTENANCE_02 |
-| SUPERVISOR_MAINTENANCE_01 |
-| SUPERVISOR_MAINTENANCE_02 |
-| ADMIN |
+| SUPERVISOR_MAINTENANCE_01  |
+| SUPERVISOR_MAINTENANCE_02  |
+| ADMIN                      |
 
 ### Validations
 
@@ -489,10 +491,10 @@ Cancels a Work Request and its associated Work Order. If Oracle integration is e
 
 ### Required Permissions
 
-| Permission | Description |
-|------------|-------------|
-| `mnt.work.request.cancel` | Required to cancel a Work Request |
-| `mnt.work.orders.cancel` | Required to cancel the associated Work Order |
+| Permission                      | Description                                                                 |
+| ------------------------------- | --------------------------------------------------------------------------- |
+| `mnt.work.request.cancel`       | Required to cancel a Work Request                                           |
+| `mnt.work.orders.cancel`        | Required to cancel the associated Work Order                                |
 | `oracle.mnt.work.orders.cancel` | Required when Oracle integration is enabled and the WO was synced to Oracle |
 
 ### Role Restriction
@@ -534,9 +536,9 @@ THEN the system SHALL reject the request with a 400 status.
 ### Allowed Status Transitions
 
 | From Status | Allowed Transitions To |
-|-------------|----------------------|
-| RELEASED    | CANCELED             |
-| COMPLETED   | CANCELED             |
+| ----------- | ---------------------- |
+| RELEASED    | CANCELED               |
+| COMPLETED   | CANCELED               |
 
 ### Processing
 
@@ -564,31 +566,31 @@ Returns the canceled Work Request with `statusCode: "CANCELED"` and `canceledAt`
 ### Work Request Status Transitions
 
 | From Status | Allowed Transitions To |
-|-------------|----------------------|
-| RELEASED    | COMPLETED, CANCELED  |
-| COMPLETED   | CANCELED             |
-| CANCELED    | [] (terminal)        |
+| ----------- | ---------------------- |
+| RELEASED    | COMPLETED, CANCELED    |
+| COMPLETED   | CANCELED               |
+| CANCELED    | [] (terminal)          |
 
 ### Work Request Status / Work Order Impact
 
-| Work Request Transition | Work Order Impact |
-|------------------------|-------------------|
-| RELEASED → COMPLETED   | None              |
-| RELEASED → CANCELED    | WO canceled, all operations canceled, Oracle sync if applicable |
-| COMPLETED → CANCELED   | WO canceled, all operations canceled, Oracle sync if applicable |
+| Work Request Transition | Work Order Impact                                               |
+| ----------------------- | --------------------------------------------------------------- |
+| RELEASED → COMPLETED    | None                                                            |
+| RELEASED → CANCELED     | WO canceled, all operations canceled, Oracle sync if applicable |
+| COMPLETED → CANCELED    | WO canceled, all operations canceled, Oracle sync if applicable |
 
 ---
 
 ## Error Mapping
 
-| Status | Error Code / Message | Description |
-|--------|---------------------|-------------|
-| 400    | Validation errors   | Missing or invalid fields |
-| 400    | Invalid status transition | Work Request cannot transition from current status |
-| 403    | MISSING_PERMISSION  | User lacks required permission |
-| 403    | MISSING_ORACLE_PERMISSION | User lacks Oracle permission when Oracle integration is enabled |
-| 403    | ROLE_NOT_AUTHORIZED | User's role is not authorized for this action |
-| 403    | ORGANIZATION_MISMATCH | Asset belongs to a different organization |
-| 404    | Asset not found or inactive | The specified asset does not exist or is inactive |
-| 404    | Work Request not found | The specified Work Request does not exist |
-| 500    | Internal server error | Unexpected failure |
+| Status | Error Code / Message        | Description                                                     |
+| ------ | --------------------------- | --------------------------------------------------------------- |
+| 400    | Validation errors           | Missing or invalid fields                                       |
+| 400    | Invalid status transition   | Work Request cannot transition from current status              |
+| 403    | MISSING_PERMISSION          | User lacks required permission                                  |
+| 403    | MISSING_ORACLE_PERMISSION   | User lacks Oracle permission when Oracle integration is enabled |
+| 403    | ROLE_NOT_AUTHORIZED         | User's role is not authorized for this action                   |
+| 403    | ORGANIZATION_MISMATCH       | Asset belongs to a different organization                       |
+| 404    | Asset not found or inactive | The specified asset does not exist or is inactive               |
+| 404    | Work Request not found      | The specified Work Request does not exist                       |
+| 500    | Internal server error       | Unexpected failure                                              |

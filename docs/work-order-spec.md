@@ -72,18 +72,20 @@ The system-level environment variable `ENABLE_ORACLE_WORK_ORDER_SYSTEM` acts as 
 
 #### Required Fields (Work Order Level)
 
-| Field                 | Type                        | Max Length | Description                                                               |
-| --------------------- | --------------------------- | ---------- | ------------------------------------------------------------------------- |
-| workOrderDescription  | string                      | 240        | Description of the work order.                                            |
-| woStatusCode          | string                      | 30         | Status code in UPPER_SNAKE_CASE (e.g., "UNRELEASED", "RELEASED").         |
-| assetCode             | string                      | 80         | Asset identifier.                                                         |
-| workOrderType         | string                      | 30         | Work order type (e.g., "Planned", "Not Planned").                         |
-| workOrderSubType      | string                      | 30         | Work order sub-type (e.g., "Preventive", "Corrective", "Emergency").      |
-| workOrderPriority     | string ("1"\|"2"\|"3"\|"4") | -          | Priority level (1=highest, 4=lowest).                                     |
-| enableOracleWorkOrder | string ("Y"\|"N")           | 1          | Flag to enable Oracle integration.                                        |
+| Field                 | Type                        | Max Length | Description                                                                                                                                                                                               |
+| --------------------- | --------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| workOrderDescription  | string                      | 240        | Description of the work order.                                                                                                                                                                            |
+| woStatusCode          | string                      | 30         | Status code in UPPER_SNAKE_CASE (e.g., "UNRELEASED", "RELEASED").                                                                                                                                         |
+| assetCode             | string                      | 80         | Asset identifier.                                                                                                                                                                                         |
+| workOrderType         | string                      | 30         | Work order type (e.g., "Planned", "Not Planned").                                                                                                                                                         |
+| workOrderSubType      | string                      | 30         | Work order sub-type (e.g., "Preventive", "Corrective", "Emergency").                                                                                                                                      |
+| workOrderPriority     | string ("1"\|"2"\|"3"\|"4") | -          | Priority level (1=highest, 4=lowest).                                                                                                                                                                     |
+| enableOracleWorkOrder | string ("Y"\|"N")           | 1          | Flag to enable Oracle integration.                                                                                                                                                                        |
 | operations            | array                       | -          | Array of operations. Required and non-empty when the Work Order is created from the gateway. When created from a Work Request, it is auto-completed with a default operation by the work-request handler. |
 
 > **Creation source of `operations`:** When the Work Order is created **from the gateway** (`work.order.create`), `operations` is a mandatory, non-empty array that the client SHALL send; the gateway rejects requests without at least one operation before forwarding. When the Work Order is created **from a Work Request**, the work-request client does NOT send `operations`; the work-request handler injects a single default operation (`DEFAULT_OPERATION` with one `DEFAULT_RESOURCE` resource) before invoking creation.
+
+> **Initial data requirement (`DEFAULT_RESOURCE`):** The default operation injected when creating a Work Order from a Work Request references `resourceCode = "DEFAULT_RESOURCE"`. Therefore the `mnt_human_resources` table SHALL contain at least one active human resource with `resource_code = 'DEFAULT_RESOURCE'` per environment; without it, inserting the operation's resource usage fails with an FK constraint violation.
 
 #### Gateway-Injected Fields (Work Order Level)
 
@@ -140,15 +142,15 @@ Each operation in the `operations` array must contain:
 
 Each resource in `workOrderOperationResource` must contain:
 
-| Field                  | Type              | Description                                                                                |
-| ---------------------- | ----------------- | ------------------------------------------------------------------------------------------ |
-| resourceCode           | string            | Resource identifier.                                                                       |
+| Field                  | Type              | Description                                                                                 |
+| ---------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
+| resourceCode           | string            | Resource identifier.                                                                        |
 | resourceSequenceNumber | integer (>= 0)    | Sequence number for Oracle Fusion integration. Does NOT affect calculations in this system. |
-| plannedHours           | number (> 0)      | Planned hours for the resource.                                                            |
-| actualHours            | number (> 0)      | Actual hours for the resource. Must be greater than 0.                                     |
-| principalFlag          | string ("Y"\|"N") | Principal flag indicator.                                                                  |
-| actualStartDate        | string (ISO 8601) | Actual start date for the resource. Must be before actualCompletionDate.                   |
-| actualCompletionDate   | string (ISO 8601) | Actual completion date for the resource. Must be after actualStartDate.                    |
+| plannedHours           | number (> 0)      | Planned hours for the resource.                                                             |
+| actualHours            | number (> 0)      | Actual hours for the resource. Must be greater than 0.                                      |
+| principalFlag          | string ("Y"\|"N") | Principal flag indicator.                                                                   |
+| actualStartDate        | string (ISO 8601) | Actual start date for the resource. Must be before actualCompletionDate.                    |
+| actualCompletionDate   | string (ISO 8601) | Actual completion date for the resource. Must be after actualStartDate.                     |
 
 ##### Optional Fields (Resource Level)
 
@@ -173,89 +175,89 @@ Each material in `workOrderOperationMaterial` must contain:
 
 These fields are calculated or managed by the system and SHALL NOT be provided when creating a Work Order.
 
-| Field                 | Type          | Description                                                     |
-| --------------------- | ------------- | --------------------------------------------------------------- |
-| workOrderCode         | BigInt        | Auto-generated unique identifier.                               |
-| actualHours           | Float         | Calculated: SUM of all ACTIVE operations' actualHours.          |
-| totalManHours         | Float         | Total man hours from operations (operationType = "Internal").   |
-| totalSupplierHours    | Float         | Total supplier hours from operations (operationType = "Supplier"). |
-| createdAt             | DateTime      | Record creation timestamp.                                      |
-| updatedAt             | DateTime      | Last update timestamp.                                          |
-| updatedBy             | string        | Last updated by user.                                           |
-| updatedByName         | string        | Last updated by user name.                                      |
-| createdBy             | string (UUID) | User identifier who creates the work order.                     |
-| createdByName         | string        | Creator user name.                                              |
-| woStatusLabel         | string        | Title Case label for woStatusCode (e.g., "Unreleased").         |
+| Field                 | Type          | Description                                                                                 |
+| --------------------- | ------------- | ------------------------------------------------------------------------------------------- |
+| workOrderCode         | BigInt        | Auto-generated unique identifier.                                                           |
+| actualHours           | Float         | Calculated: SUM of all ACTIVE operations' actualHours.                                      |
+| totalManHours         | Float         | Total man hours from operations (operationType = "Internal").                               |
+| totalSupplierHours    | Float         | Total supplier hours from operations (operationType = "Supplier").                          |
+| createdAt             | DateTime      | Record creation timestamp.                                                                  |
+| updatedAt             | DateTime      | Last update timestamp.                                                                      |
+| updatedBy             | string        | Last updated by user.                                                                       |
+| updatedByName         | string        | Last updated by user name.                                                                  |
+| createdBy             | string (UUID) | User identifier who creates the work order.                                                 |
+| createdByName         | string        | Creator user name.                                                                          |
+| woStatusLabel         | string        | Title Case label for woStatusCode (e.g., "Unreleased").                                     |
 | actualStartDate       | DateTime      | Calculated: MIN of all ACTIVE operations' actualStartDate. Editable via reprogram endpoint. |
-| actualCompletionDate  | DateTime      | Calculated: MAX of all ACTIVE operations' actualCompletionDate. |
-| workCenterCode        | string        | Work center code (inferred from asset).                         |
-| workCenterDescription | string        | Work center description (inferred from asset).                  |
-| centerCostCode        | integer       | Cost center code (inferred from asset).                         |
-| workAreaCode          | string        | Work area code (inferred from asset).                           |
-| workAreaDescription   | string        | Work area description (inferred from asset).                    |
-| sector                | string        | Sector (inferred from asset).                                   |
-| subsector             | string        | Subsector (inferred from asset).                                |
-| organizationCode      | string        | Organization code.                                              |
-| organizationName      | string        | Organization name (inferred from asset).                        |
-| assetShortDescription | string        | Asset short description (inferred from asset).                  |
-| plannedHours          | Float         | Planned hours (aggregated).                                     |
-| releasedDate          | DateTime      | Release timestamp.                                              |
-| closedDate            | DateTime      | Close timestamp.                                                |
-| canceledDate          | DateTime      | Cancellation timestamp.                                         |
-| canceledReason        | string        | Reason for cancellation (required when canceling).              |
-| oclWorkOrderId        | BigInt        | Oracle Cloud work order ID.                                     |
-| oclWorkOrderNumber    | string        | Oracle Cloud work order number.                                 |
+| actualCompletionDate  | DateTime      | Calculated: MAX of all ACTIVE operations' actualCompletionDate.                             |
+| workCenterCode        | string        | Work center code (inferred from asset).                                                     |
+| workCenterDescription | string        | Work center description (inferred from asset).                                              |
+| centerCostCode        | integer       | Cost center code (inferred from asset).                                                     |
+| workAreaCode          | string        | Work area code (inferred from asset).                                                       |
+| workAreaDescription   | string        | Work area description (inferred from asset).                                                |
+| sector                | string        | Sector (inferred from asset).                                                               |
+| subsector             | string        | Subsector (inferred from asset).                                                            |
+| organizationCode      | string        | Organization code.                                                                          |
+| organizationName      | string        | Organization name (inferred from asset).                                                    |
+| assetShortDescription | string        | Asset short description (inferred from asset).                                              |
+| plannedHours          | Float         | Planned hours (aggregated).                                                                 |
+| releasedDate          | DateTime      | Release timestamp.                                                                          |
+| closedDate            | DateTime      | Close timestamp.                                                                            |
+| canceledDate          | DateTime      | Cancellation timestamp.                                                                     |
+| canceledReason        | string        | Reason for cancellation (required when canceling).                                          |
+| oclWorkOrderId        | BigInt        | Oracle Cloud work order ID.                                                                 |
+| oclWorkOrderNumber    | string        | Oracle Cloud work order number.                                                             |
 
 #### System Generated / Calculated Fields (Operation Level)
 
-| Field                 | Type     | Description                                                |
-| --------------------- | -------- | ---------------------------------------------------------- |
-| operationCode         | BigInt   | Auto-generated unique identifier.                          |
-| actualHours           | Float    | Calculated: SUM of all ACTIVE resources' actualHours.      |
-| actualStartDate       | DateTime | Calculated: MIN of all ACTIVE resources' actualStartDate.  |
+| Field                 | Type     | Description                                                    |
+| --------------------- | -------- | -------------------------------------------------------------- |
+| operationCode         | BigInt   | Auto-generated unique identifier.                              |
+| actualHours           | Float    | Calculated: SUM of all ACTIVE resources' actualHours.          |
+| actualStartDate       | DateTime | Calculated: MIN of all ACTIVE resources' actualStartDate.      |
 | actualCompletionDate  | DateTime | Calculated: MAX of all ACTIVE resources' actualCompletionDate. |
-| operationStatusLabel  | string   | Title Case label for operationStatus (e.g., "Unreleased"). |
-| createdAt             | DateTime | Record creation timestamp.                                 |
-| updatedAt             | DateTime | Last update timestamp.                                     |
-| updatedBy             | string   | Last updated by user.                                      |
-| updatedByName         | string   | Last updated by user name.                                 |
-| createdByName         | string   | Creator user name.                                         |
-| assetCode             | string   | Asset code (propagated from Work Order).                   |
-| assetShortDescription | string   | Asset short description (propagated from Work Order).      |
-| workCenterCode        | string   | Work center code.                                          |
-| workCenterDescription | string   | Work center description.                                   |
-| centerCostCode        | integer  | Cost center code.                                          |
-| workAreaCode          | string   | Work area code.                                            |
-| workAreaDescription   | string   | Work area description.                                     |
-| sector                | string   | Sector.                                                    |
-| subsector             | string   | Subsector.                                                 |
-| organizationCode      | string   | Organization code.                                         |
-| organizationName      | string   | Organization name.                                         |
-| oclWorkOrderId        | BigInt   | Oracle Cloud work order ID.                                |
-| oclWorkOrderNumber    | string   | Oracle Cloud work order number.                            |
-| plannedStartDate      | DateTime | Planned start date.                                        |
-| plannedCompletionDate | DateTime | Planned completion date.                                   |
-| plannedHours          | Float    | Planned hours.                                             |
-| reviewedBy            | string   | Reviewed by user.                                          |
-| reviewedByName        | string   | Reviewed by user name.                                     |
-| reviewedAt            | DateTime | Review timestamp.                                          |
+| operationStatusLabel  | string   | Title Case label for operationStatus (e.g., "Unreleased").     |
+| createdAt             | DateTime | Record creation timestamp.                                     |
+| updatedAt             | DateTime | Last update timestamp.                                         |
+| updatedBy             | string   | Last updated by user.                                          |
+| updatedByName         | string   | Last updated by user name.                                     |
+| createdByName         | string   | Creator user name.                                             |
+| assetCode             | string   | Asset code (propagated from Work Order).                       |
+| assetShortDescription | string   | Asset short description (propagated from Work Order).          |
+| workCenterCode        | string   | Work center code.                                              |
+| workCenterDescription | string   | Work center description.                                       |
+| centerCostCode        | integer  | Cost center code.                                              |
+| workAreaCode          | string   | Work area code.                                                |
+| workAreaDescription   | string   | Work area description.                                         |
+| sector                | string   | Sector.                                                        |
+| subsector             | string   | Subsector.                                                     |
+| organizationCode      | string   | Organization code.                                             |
+| organizationName      | string   | Organization name.                                             |
+| oclWorkOrderId        | BigInt   | Oracle Cloud work order ID.                                    |
+| oclWorkOrderNumber    | string   | Oracle Cloud work order number.                                |
+| plannedStartDate      | DateTime | Planned start date.                                            |
+| plannedCompletionDate | DateTime | Planned completion date.                                       |
+| plannedHours          | Float    | Planned hours.                                                 |
+| reviewedBy            | string   | Reviewed by user.                                              |
+| reviewedByName        | string   | Reviewed by user name.                                         |
+| reviewedAt            | DateTime | Review timestamp.                                              |
 
 #### System Generated / Calculated Fields (Resource Level)
 
-| Field                    | Type              | Description                       |
-| ------------------------ | ----------------- | --------------------------------- |
-| id                       | BigInt            | Auto-generated unique identifier. |
-| operationCode            | BigInt            | Parent operation identifier.      |
-| organizationCode         | string            | Organization code.                |
-| transactedInOracle       | string ("Y"\|"N") | Oracle transaction flag.          |
-| oclWoOperationResourceId | BigInt            | Oracle Cloud resource ID.         |
-| syncedToOracleAt         | DateTime          | Oracle sync timestamp.            |
-| createdBy                | string            | Creator user identifier.          |
-| createdByName            | string            | Creator user name.                |
-| updatedBy                | string            | Last updated by user.             |
-| updatedByName            | string            | Last updated by user name.        |
-| createdAt                | DateTime          | Record creation timestamp.        |
-| updatedAt                | DateTime          | Last update timestamp.            |
+| Field                    | Type              | Description                               |
+| ------------------------ | ----------------- | ----------------------------------------- |
+| id                       | BigInt            | Auto-generated unique identifier.         |
+| operationCode            | BigInt            | Parent operation identifier.              |
+| organizationCode         | string            | Organization code.                        |
+| transactedInOracle       | string ("Y"\|"N") | Oracle transaction flag.                  |
+| oclWoOperationResourceId | BigInt            | Oracle Cloud resource ID.                 |
+| syncedToOracleAt         | DateTime          | Oracle sync timestamp.                    |
+| createdBy                | string            | Creator user identifier.                  |
+| createdByName            | string            | Creator user name.                        |
+| updatedBy                | string            | Last updated by user.                     |
+| updatedByName            | string            | Last updated by user name.                |
+| createdAt                | DateTime          | Record creation timestamp.                |
+| updatedAt                | DateTime          | Last update timestamp.                    |
 | status                   | string            | "ACTIVE" or "CANCELED". Default "ACTIVE". |
 
 #### System Generated / Calculated Fields (Material Level)
@@ -1191,18 +1193,18 @@ Allowed roles for Oracle operations:
 
 #### Required Fields
 
-| Field                 | Type              | Max Length | Description                                                        |
-| --------------------- | ----------------- | ---------- | ------------------------------------------------------------------ |
-| enableOracleWorkOrder | string ("Y"\|"N")| 1          | Flag to enable Oracle integration for this update.                 |
+| Field                 | Type              | Max Length | Description                                        |
+| --------------------- | ----------------- | ---------- | -------------------------------------------------- |
+| enableOracleWorkOrder | string ("Y"\|"N") | 1          | Flag to enable Oracle integration for this update. |
 
 #### Editable Fields (All Optional)
 
-| Field                | Type                        | Max Length | Description                                                        |
-| -------------------- | --------------------------- | ---------- | ------------------------------------------------------------------ |
-| workOrderDescription | string                      | 240        | Updated description of the work order.                             |
-| workOrderType        | string                      | 30         | Updated work order type (e.g., "Planned", "Not Planned").          |
-| workOrderSubType     | string                      | 30         | Updated work order sub-type.                                       |
-| workOrderPriority    | string ("1"\|"2"\|"3"\|"4") | -          | Updated priority level.                                            |
+| Field                | Type                        | Max Length | Description                                               |
+| -------------------- | --------------------------- | ---------- | --------------------------------------------------------- |
+| workOrderDescription | string                      | 240        | Updated description of the work order.                    |
+| workOrderType        | string                      | 30         | Updated work order type (e.g., "Planned", "Not Planned"). |
+| workOrderSubType     | string                      | 30         | Updated work order sub-type.                              |
+| workOrderPriority    | string ("1"\|"2"\|"3"\|"4") | -          | Updated priority level.                                   |
 
 #### Example Request Payload
 
@@ -1596,16 +1598,16 @@ Cancels a Work Order and all its operations (terminal state).
 
 ### Required Permissions
 
-| Permission | Description |
-|------------|-------------|
-| `mnt.work.orders.cancel` | Required to cancel a Work Order |
+| Permission                      | Description                                                                 |
+| ------------------------------- | --------------------------------------------------------------------------- |
+| `mnt.work.orders.cancel`        | Required to cancel a Work Order                                             |
 | `oracle.mnt.work.orders.cancel` | Required when Oracle integration is enabled and the WO was synced to Oracle |
 
 ### Request
 
-| Field          | Type   | Required | Description                                     |
-| -------------- | ------ | -------- | ----------------------------------------------- |
-| canceledReason | string | Yes      | Reason for cancellation (max 240 characters).   |
+| Field          | Type   | Required | Description                                   |
+| -------------- | ------ | -------- | --------------------------------------------- |
+| canceledReason | string | Yes      | Reason for cancellation (max 240 characters). |
 
 ### Validations
 
@@ -1708,9 +1710,9 @@ Reprograms the `actualStartDate` of a Work Order by applying a date delta to all
 
 ### Request
 
-| Field              | Type            | Required | Description                                                    |
-| ------------------ | --------------- | -------- | -------------------------------------------------------------- |
-| newActualStartDate | string (ISO 8601) | Yes    | The new actual start date for the Work Order.                  |
+| Field              | Type              | Required | Description                                   |
+| ------------------ | ----------------- | -------- | --------------------------------------------- |
+| newActualStartDate | string (ISO 8601) | Yes      | The new actual start date for the Work Order. |
 
 ### Validations
 
