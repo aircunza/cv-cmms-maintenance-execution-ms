@@ -41,410 +41,430 @@ describe("WO Creation POST (e2e, NATS)", () => {
           operationSubType: "Preventive",
           actualStartDate: "2025-11-21T08:00:00.000Z",
           actualCompletionDate: "2025-11-21T10:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_001,
-              resourceSequenceNumber: 1,
-              plannedHours: 2,
-              actualHours: 2,
-            },
-          ],
-          workOrderOperationMaterial: [
-            {
-              materialSequenceNumber: 10,
-              quantity: 1,
-              supplyType: "1",
-              materialCode: "MAT-001",
-            },
-          ],
-        },
-      ],
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
+              },
+            ],
+            workOrderOperationMaterial: [
+              {
+                materialSequenceNumber: 10,
+                quantity: 1,
+                supplyType: "1",
+                materialCode: "MAT-001",
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(response.workOrder).toBeDefined();
+      expect(response.workOrder.workOrderCode).toBeDefined();
+      expect(response.workOrder.workOrderDescription).toBe("E2E Work Order Test");
+      expect(response.workOrder.assetCode).toBe("E2E_WO_AST_001");
+      expect(response.workOrder.woStatusCode).toBe("UNRELEASED");
+      expect(response.workOrder.woStatusLabel).toBe("Unreleased");
+      expect(response.workOrder.workOrderType).toBe("Planned");
+      expect(response.workOrder.workOrderSubType).toBe("Preventive");
+      expect(response.workOrder.workOrderPriority).toBe("2");
+      expect(response.workOrder.enableOracleWorkOrder).toBe("N");
+      expect(response.workOrder.organizationCode).toBe(context.organizationCode);
+      expect(response.workOrder.createdBy).toBe(context.actor.id);
+      expect(response.workOrder.createdByName).toBe(context.actor.username);
+      expect(response.workOrder.operations).toBeDefined();
+      expect(response.workOrder.operations.length).toBe(1);
+
+      const op = response.workOrder.operations[0];
+      expect(op.operationName).toBe("Lubrication");
+      expect(op.operationSubType).toBe("Preventive");
+      expect(op.operationStatusLabel).toBe("Unreleased");
+      expect(op.workOrderOperationResource.length).toBe(1);
+      expect(op.workOrderOperationMaterial.length).toBe(1);
     });
 
-    expect(response.workOrder).toBeDefined();
-    expect(response.workOrder.workOrderCode).toBeDefined();
-    expect(response.workOrder.workOrderDescription).toBe("E2E Work Order Test");
-    expect(response.workOrder.assetCode).toBe("E2E_WO_AST_001");
-    expect(response.workOrder.woStatusCode).toBe("UNRELEASED");
-    expect(response.workOrder.woStatusLabel).toBe("Unreleased");
-    expect(response.workOrder.workOrderType).toBe("Planned");
-    expect(response.workOrder.workOrderSubType).toBe("Preventive");
-    expect(response.workOrder.workOrderPriority).toBe("2");
-    expect(response.workOrder.enableOracleWorkOrder).toBe("N");
-    expect(response.workOrder.organizationCode).toBe(context.organizationCode);
-    expect(response.workOrder.createdBy).toBe(context.actor.id);
-    expect(response.workOrder.createdByName).toBe(context.actor.username);
-    expect(response.workOrder.operations).toBeDefined();
-    expect(response.workOrder.operations.length).toBe(1);
+    it("creates WO without operations -> default operation created", async () => {
+      const response = await createWorkOrder(context, {
+        operations: [],
+      });
 
-    const op = response.workOrder.operations[0];
-    expect(op.operationName).toBe("Lubrication");
-    expect(op.operationSubType).toBe("Preventive");
-    expect(op.operationStatusLabel).toBe("Unreleased");
-    expect(op.workOrderOperationResource.length).toBe(1);
-    expect(op.workOrderOperationMaterial.length).toBe(1);
-  });
+      expect(response.workOrder).toBeDefined();
+      expect(response.workOrder.operations.length).toBe(1);
 
-  it("creates WO without operations -> default operation created", async () => {
-    const response = await createWorkOrder(context, {
-      operations: [],
+      const op = response.workOrder.operations[0];
+      expect(op.operationName).toBe("DEFAULT_OPERATION");
+      expect(op.operationDescription).toBe("Auto-generated default operation");
+      expect(op.operationSeqNumber).toBe(1);
+      expect(op.operationStatus).toBe("UNRELEASED");
+      expect(op.operationType).toBe("Internal");
+      expect(op.operationSubType).toBe("Preventive");
+      expect(op.workOrderOperationResource.length).toBe(1);
+      expect(op.workOrderOperationResource[0].principalFlag).toBe("N");
     });
 
-    expect(response.workOrder).toBeDefined();
-    expect(response.workOrder.operations.length).toBe(1);
+    it("creates WO with single operation, single resource", async () => {
+      const response = await createWorkOrder(context, {
+        operations: [
+          {
+            operationName: "Single Op",
+            operationDescription: "Single operation test",
+            operationSeqNumber: 10,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T08:00:00.000Z",
+            actualCompletionDate: "2025-11-21T10:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      });
 
-    const op = response.workOrder.operations[0];
-    expect(op.operationName).toBe("DEFAULT_OPERATION");
-    expect(op.operationDescription).toBe("Auto-generated default operation");
-    expect(op.operationSeqNumber).toBe(1);
-    expect(op.operationStatus).toBe("UNRELEASED");
-    expect(op.operationType).toBe("Internal");
-    expect(op.operationSubType).toBe("Preventive");
-    expect(op.workOrderOperationResource.length).toBe(1);
-    expect(op.workOrderOperationResource[0].principalFlag).toBe("N");
-  });
-
-  it("creates WO with single operation, single resource", async () => {
-    const response = await createWorkOrder(context, {
-      operations: [
-        {
-          operationName: "Single Op",
-          operationDescription: "Single operation test",
-          operationSeqNumber: 10,
-          createdBy: context.actor.id,
-          operationStatus: "UNRELEASED",
-          operationType: "Internal",
-          operationSubType: "Preventive",
-          actualStartDate: "2025-11-21T08:00:00.000Z",
-          actualCompletionDate: "2025-11-21T10:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_001,
-              resourceSequenceNumber: 1,
-              plannedHours: 2,
-              actualHours: 2,
-            },
-          ],
-        },
-      ],
+      expect(response.workOrder.workOrderCode).toBeDefined();
+      expect(response.workOrder.operations.length).toBe(1);
+      expect(response.workOrder.operations[0].operationName).toBe("Single Op");
     });
 
-    expect(response.workOrder.workOrderCode).toBeDefined();
-    expect(response.workOrder.operations.length).toBe(1);
-    expect(response.workOrder.operations[0].operationName).toBe("Single Op");
-  });
+    it("creates WO with multiple resources -> actualHours = SUM", async () => {
+      const response = await createWorkOrder(context, {
+        operations: [
+          {
+            operationName: "Multi Resource Test",
+            operationDescription: "Multiple resources test",
+            operationSeqNumber: 10,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T08:00:00.000Z",
+            actualCompletionDate: "2025-11-21T10:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
+              },
+              {
+                principalFlag: "N",
+                resourceCode: RES_002,
+                resourceSequenceNumber: 1,
+                actualHours: 3,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T11:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      });
 
-  it("creates WO with parallel resources (same seqNumber) -> actualHours = MAX", async () => {
-    const response = await createWorkOrder(context, {
-      operations: [
-        {
-          operationName: "Parallel Test",
-          operationDescription: "Parallel resources test",
-          operationSeqNumber: 10,
-          createdBy: context.actor.id,
-          operationStatus: "UNRELEASED",
-          operationType: "Internal",
-          operationSubType: "Preventive",
-          actualStartDate: "2025-11-21T08:00:00.000Z",
-          actualCompletionDate: "2025-11-21T10:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_001,
-              resourceSequenceNumber: 1,
-              plannedHours: 2,
-              actualHours: 2,
-            },
-            {
-              principalFlag: "N",
-              resourceCode: RES_002,
-              resourceSequenceNumber: 1,
-              plannedHours: 3,
-              actualHours: 3,
-            },
-          ],
-        },
-      ],
+      const op = response.workOrder.operations[0];
+      expect(op.actualHours).toBe(5);
+      expect(response.workOrder.actualHours).toBe(5);
     });
 
-    const op = response.workOrder.operations[0];
-    expect(op.actualHours).toBe(3);
-    expect(response.workOrder.actualHours).toBe(3);
-  });
+    // ==================== CALCULATIONS ====================
 
-  // ==================== CALCULATIONS ====================
+    it("calculates actualHours as SUM of all resources", async () => {
+      const response = await createWorkOrder(context, {
+        operations: [
+          {
+            operationName: "Sum Calc",
+            operationDescription: "Verify SUM calculation",
+            operationSeqNumber: 10,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T08:00:00.000Z",
+            actualCompletionDate: "2025-11-21T10:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
+              },
+              {
+                principalFlag: "N",
+                resourceCode: RES_002,
+                resourceSequenceNumber: 1,
+                actualHours: 5,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T13:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      });
 
-  it("calculates actualHours correctly for parallel resources", async () => {
-    const response = await createWorkOrder(context, {
-      operations: [
-        {
-          operationName: "Parallel Calc",
-          operationDescription: "Verify MAX calculation",
-          operationSeqNumber: 10,
-          createdBy: context.actor.id,
-          operationStatus: "UNRELEASED",
-          operationType: "Internal",
-          operationSubType: "Preventive",
-          actualStartDate: "2025-11-21T08:00:00.000Z",
-          actualCompletionDate: "2025-11-21T10:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_001,
-              resourceSequenceNumber: 1,
-              plannedHours: 2,
-              actualHours: 2,
-            },
-            {
-              principalFlag: "N",
-              resourceCode: RES_002,
-              resourceSequenceNumber: 1,
-              plannedHours: 5,
-              actualHours: 5,
-            },
-          ],
-        },
-      ],
+      const op = response.workOrder.operations[0];
+      expect(op.actualHours).toBe(7);
     });
 
-    const op = response.workOrder.operations[0];
-    expect(op.actualHours).toBe(5);
-  });
+    it("calculates WO actualHours as sum of all operations", async () => {
+      const response = await createWorkOrder(context, {
+        operations: [
+          {
+            operationName: "Op 1",
+            operationDescription: "First operation",
+            operationSeqNumber: 10,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T08:00:00.000Z",
+            actualCompletionDate: "2025-11-21T10:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
+              },
+            ],
+          },
+          {
+            operationName: "Op 2",
+            operationDescription: "Second operation",
+            operationSeqNumber: 20,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T11:00:00.000Z",
+            actualCompletionDate: "2025-11-21T14:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                actualHours: 3,
+                actualStartDate: "2025-11-21T11:00:00.000Z",
+                actualCompletionDate: "2025-11-21T14:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      });
 
-  it("calculates WO actualHours as sum of all operations", async () => {
-    const response = await createWorkOrder(context, {
-      operations: [
-        {
-          operationName: "Op 1",
-          operationDescription: "First operation",
-          operationSeqNumber: 10,
-          createdBy: context.actor.id,
-          operationStatus: "UNRELEASED",
-          operationType: "Internal",
-          operationSubType: "Preventive",
-          actualStartDate: "2025-11-21T08:00:00.000Z",
-          actualCompletionDate: "2025-11-21T10:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_001,
-              resourceSequenceNumber: 1,
-              plannedHours: 2,
-              actualHours: 2,
-            },
-          ],
-        },
-        {
-          operationName: "Op 2",
-          operationDescription: "Second operation",
-          operationSeqNumber: 20,
-          createdBy: context.actor.id,
-          operationStatus: "UNRELEASED",
-          operationType: "Internal",
-          operationSubType: "Preventive",
-          actualStartDate: "2025-11-21T11:00:00.000Z",
-          actualCompletionDate: "2025-11-21T14:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_001,
-              resourceSequenceNumber: 1,
-              plannedHours: 3,
-              actualHours: 3,
-            },
-          ],
-        },
-      ],
+      expect(response.workOrder.actualHours).toBe(5);
     });
 
-    expect(response.workOrder.actualHours).toBe(5);
-  });
+    it("calculates WO actualStartDate as earliest operation", async () => {
+      const response = await createWorkOrder(context, {
+        operations: [
+          {
+            operationName: "Op 1",
+            operationDescription: "First operation",
+            operationSeqNumber: 10,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T06:00:00.000Z",
+            actualCompletionDate: "2025-11-21T08:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                actualHours: 2,
+                actualStartDate: "2025-11-21T06:00:00.000Z",
+                actualCompletionDate: "2025-11-21T08:00:00.000Z",
+              },
+            ],
+          },
+          {
+            operationName: "Op 2",
+            operationDescription: "Second operation",
+            operationSeqNumber: 20,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T08:00:00.000Z",
+            actualCompletionDate: "2025-11-21T10:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      });
 
-  it("calculates WO actualStartDate as earliest operation", async () => {
-    const response = await createWorkOrder(context, {
-      operations: [
-        {
-          operationName: "Op 1",
-          operationDescription: "First operation",
-          operationSeqNumber: 10,
-          createdBy: context.actor.id,
-          operationStatus: "UNRELEASED",
-          operationType: "Internal",
-          operationSubType: "Preventive",
-          actualStartDate: "2025-11-21T06:00:00.000Z",
-          actualCompletionDate: "2025-11-21T08:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_001,
-              resourceSequenceNumber: 1,
-              plannedHours: 2,
-              actualHours: 2,
-            },
-          ],
-        },
-        {
-          operationName: "Op 2",
-          operationDescription: "Second operation",
-          operationSeqNumber: 20,
-          createdBy: context.actor.id,
-          operationStatus: "UNRELEASED",
-          operationType: "Internal",
-          operationSubType: "Preventive",
-          actualStartDate: "2025-11-21T08:00:00.000Z",
-          actualCompletionDate: "2025-11-21T10:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_001,
-              resourceSequenceNumber: 1,
-              plannedHours: 2,
-              actualHours: 2,
-            },
-          ],
-        },
-      ],
+      const woStart = new Date(response.workOrder.actualStartDate);
+      expect(woStart.toISOString()).toBe("2025-11-21T06:00:00.000Z");
     });
 
-    const woStart = new Date(response.workOrder.actualStartDate);
-    expect(woStart.toISOString()).toBe("2025-11-21T06:00:00.000Z");
-  });
+    it("calculates WO actualCompletionDate as latest operation", async () => {
+      const response = await createWorkOrder(context, {
+        operations: [
+          {
+            operationName: "Op 1",
+            operationDescription: "First operation",
+            operationSeqNumber: 10,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T08:00:00.000Z",
+            actualCompletionDate: "2025-11-21T10:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
+              },
+            ],
+          },
+          {
+            operationName: "Op 2",
+            operationDescription: "Second operation",
+            operationSeqNumber: 20,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T11:00:00.000Z",
+            actualCompletionDate: "2025-11-21T18:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                actualHours: 7,
+                actualStartDate: "2025-11-21T11:00:00.000Z",
+                actualCompletionDate: "2025-11-21T18:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      });
 
-  it("calculates WO actualCompletionDate as latest operation", async () => {
-    const response = await createWorkOrder(context, {
-      operations: [
-        {
-          operationName: "Op 1",
-          operationDescription: "First operation",
-          operationSeqNumber: 10,
-          createdBy: context.actor.id,
-          operationStatus: "UNRELEASED",
-          operationType: "Internal",
-          operationSubType: "Preventive",
-          actualStartDate: "2025-11-21T08:00:00.000Z",
-          actualCompletionDate: "2025-11-21T10:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_001,
-              resourceSequenceNumber: 1,
-              plannedHours: 2,
-              actualHours: 2,
-            },
-          ],
-        },
-        {
-          operationName: "Op 2",
-          operationDescription: "Second operation",
-          operationSeqNumber: 20,
-          createdBy: context.actor.id,
-          operationStatus: "UNRELEASED",
-          operationType: "Internal",
-          operationSubType: "Preventive",
-          actualStartDate: "2025-11-21T11:00:00.000Z",
-          actualCompletionDate: "2025-11-21T18:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_001,
-              resourceSequenceNumber: 1,
-              plannedHours: 7,
-              actualHours: 7,
-            },
-          ],
-        },
-      ],
+      const woCompletion = new Date(response.workOrder.actualCompletionDate);
+      expect(woCompletion.toISOString()).toBe("2025-11-21T18:00:00.000Z");
     });
 
-    const woCompletion = new Date(response.workOrder.actualCompletionDate);
-    expect(woCompletion.toISOString()).toBe("2025-11-21T18:00:00.000Z");
-  });
+    it("calculates operation dates from resource MIN/MAX", async () => {
+      const response = await createWorkOrder(context, {
+        operations: [
+          {
+            operationName: "Date Calc Test",
+            operationDescription: "Backend calculates dates from resources",
+            operationSeqNumber: 10,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T08:00:00.000Z",
+            actualCompletionDate: "2025-11-21T20:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
+              },
+              {
+                principalFlag: "N",
+                resourceCode: RES_002,
+                resourceSequenceNumber: 2,
+                actualHours: 3,
+                actualStartDate: "2025-11-21T10:00:00.000Z",
+                actualCompletionDate: "2025-11-21T13:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      });
 
-  it("overwrites client-provided actualCompletionDate with backend calculation", async () => {
-    const response = await createWorkOrder(context, {
-      operations: [
-        {
-          operationName: "Recalc Test",
-          operationDescription: "Backend should recalculate completion date",
-          operationSeqNumber: 10,
-          createdBy: context.actor.id,
-          operationStatus: "UNRELEASED",
-          operationType: "Internal",
-          operationSubType: "Preventive",
-          actualStartDate: "2025-11-21T08:00:00.000Z",
-          actualCompletionDate: "2025-11-21T20:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_001,
-              resourceSequenceNumber: 1,
-              plannedHours: 2,
-              actualHours: 2,
-            },
-          ],
-        },
-      ],
+      const op = response.workOrder.operations[0];
+      expect(new Date(op.actualStartDate).toISOString()).toBe("2025-11-21T08:00:00.000Z");
+      expect(new Date(op.actualCompletionDate).toISOString()).toBe("2025-11-21T13:00:00.000Z");
     });
 
-    const op = response.workOrder.operations[0];
-    const expectedCompletion = new Date("2025-11-21T08:00:00.000Z");
-    expectedCompletion.setHours(expectedCompletion.getHours() + 2);
-    expect(new Date(op.actualCompletionDate).getTime()).toBe(
-      expectedCompletion.getTime(),
-    );
-  });
+    it("calculates totalManHours and totalSupplierHours correctly", async () => {
+      const response = await createWorkOrder(context, {
+        operations: [
+          {
+            operationName: "Internal Op",
+            operationDescription: "Internal operation",
+            operationSeqNumber: 10,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Internal",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T08:00:00.000Z",
+            actualCompletionDate: "2025-11-21T10:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_001,
+                resourceSequenceNumber: 1,
+                actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
+              },
+            ],
+          },
+          {
+            operationName: "Supplier Op",
+            operationDescription: "Supplier operation",
+            operationSeqNumber: 20,
+            createdBy: context.actor.id,
+            operationStatus: "UNRELEASED",
+            operationType: "Supplier",
+            operationSubType: "Preventive",
+            actualStartDate: "2025-11-21T11:00:00.000Z",
+            actualCompletionDate: "2025-11-21T14:00:00.000Z",
+            workOrderOperationResource: [
+              {
+                principalFlag: "Y",
+                resourceCode: RES_002,
+                resourceSequenceNumber: 1,
+                actualHours: 3,
+                actualStartDate: "2025-11-21T11:00:00.000Z",
+                actualCompletionDate: "2025-11-21T14:00:00.000Z",
+              },
+            ],
+          },
+        ],
+      });
 
-  it("calculates totalManHours and totalSupplierHours correctly", async () => {
-    const response = await createWorkOrder(context, {
-      operations: [
-        {
-          operationName: "Internal Op",
-          operationDescription: "Internal operation",
-          operationSeqNumber: 10,
-          createdBy: context.actor.id,
-          operationStatus: "UNRELEASED",
-          operationType: "Internal",
-          operationSubType: "Preventive",
-          actualStartDate: "2025-11-21T08:00:00.000Z",
-          actualCompletionDate: "2025-11-21T10:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_001,
-              resourceSequenceNumber: 1,
-              plannedHours: 2,
-              actualHours: 2,
-            },
-          ],
-        },
-        {
-          operationName: "Supplier Op",
-          operationDescription: "Supplier operation",
-          operationSeqNumber: 20,
-          createdBy: context.actor.id,
-          operationStatus: "UNRELEASED",
-          operationType: "Supplier",
-          operationSubType: "Preventive",
-          actualStartDate: "2025-11-21T11:00:00.000Z",
-          actualCompletionDate: "2025-11-21T14:00:00.000Z",
-          workOrderOperationResource: [
-            {
-              principalFlag: "Y",
-              resourceCode: RES_002,
-              resourceSequenceNumber: 1,
-              plannedHours: 3,
-              actualHours: 3,
-            },
-          ],
-        },
-      ],
+      expect(response.workOrder.totalManHours).toBe(2);
+      expect(response.workOrder.totalSupplierHours).toBe(3);
     });
-
-    expect(response.workOrder.totalManHours).toBe(2);
-    expect(response.workOrder.totalSupplierHours).toBe(3);
-  });
 
   // ==================== RESPONSE STRUCTURE ====================
 
@@ -586,8 +606,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1.5,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -598,7 +619,7 @@ describe("WO Creation POST (e2e, NATS)", () => {
     );
   });
 
-  it("rejects when operation actualStartDate >= actualCompletionDate", async () => {
+  it("rejects when resource actualStartDate >= actualCompletionDate", async () => {
     await assertRpcError(
       createWorkOrder(context, {
         operations: [
@@ -617,8 +638,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T10:00:00.000Z",
+                actualCompletionDate: "2025-11-21T08:00:00.000Z",
               },
             ],
           },
@@ -648,8 +670,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -679,8 +702,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -710,8 +734,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -741,8 +766,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -776,37 +802,6 @@ describe("WO Creation POST (e2e, NATS)", () => {
     );
   });
 
-  it("rejects when resource plannedHours <= 0", async () => {
-    await assertRpcError(
-      createWorkOrder(context, {
-        operations: [
-          {
-            operationName: "Bad Hours",
-            operationDescription: "Zero planned hours",
-            operationSeqNumber: 10,
-            createdBy: context.actor.id,
-            operationStatus: "UNRELEASED",
-            operationType: "Internal",
-            operationSubType: "Preventive",
-            actualStartDate: "2025-11-21T08:00:00.000Z",
-            actualCompletionDate: "2025-11-21T10:00:00.000Z",
-            workOrderOperationResource: [
-              {
-                principalFlag: "Y",
-                resourceCode: RES_001,
-                resourceSequenceNumber: 1,
-                plannedHours: 0,
-                actualHours: 2,
-              },
-            ],
-          },
-        ],
-      }),
-      400,
-      "must not be less than 0.0001",
-    );
-  });
-
   it("rejects when resource actualHours <= 0", async () => {
     await assertRpcError(
       createWorkOrder(context, {
@@ -826,8 +821,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 0,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -857,8 +853,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: -1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -888,8 +885,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -908,8 +906,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 3,
                 actualHours: 3,
+                actualStartDate: "2025-11-21T11:00:00.000Z",
+                actualCompletionDate: "2025-11-21T14:00:00.000Z",
               },
             ],
           },
@@ -917,57 +916,6 @@ describe("WO Creation POST (e2e, NATS)", () => {
       }),
       400,
       "Duplicate operationSeqNumber",
-    );
-  });
-
-  it("rejects operations out of chronological order", async () => {
-    await assertRpcError(
-      createWorkOrder(context, {
-        operations: [
-          {
-            operationName: "Op 1",
-            operationDescription: "First",
-            operationSeqNumber: 10,
-            createdBy: context.actor.id,
-            operationStatus: "UNRELEASED",
-            operationType: "Internal",
-            operationSubType: "Preventive",
-            actualStartDate: "2025-11-21T12:00:00.000Z",
-            actualCompletionDate: "2025-11-21T14:00:00.000Z",
-            workOrderOperationResource: [
-              {
-                principalFlag: "Y",
-                resourceCode: RES_001,
-                resourceSequenceNumber: 1,
-                plannedHours: 2,
-                actualHours: 2,
-              },
-            ],
-          },
-          {
-            operationName: "Op 2",
-            operationDescription: "Second",
-            operationSeqNumber: 20,
-            createdBy: context.actor.id,
-            operationStatus: "UNRELEASED",
-            operationType: "Internal",
-            operationSubType: "Preventive",
-            actualStartDate: "2025-11-21T08:00:00.000Z",
-            actualCompletionDate: "2025-11-21T10:00:00.000Z",
-            workOrderOperationResource: [
-              {
-                principalFlag: "Y",
-                resourceCode: RES_001,
-                resourceSequenceNumber: 1,
-                plannedHours: 2,
-                actualHours: 2,
-              },
-            ],
-          },
-        ],
-      }),
-      400,
-      "starts before operation with seqNumber",
     );
   });
 
@@ -990,8 +938,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -1021,8 +970,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -1052,8 +1002,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -1083,8 +1034,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -1122,8 +1074,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -1211,8 +1164,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
                 principalFlag: "Y",
                 resourceCode: RES_001,
                 resourceSequenceNumber: 1,
-                plannedHours: 2,
                 actualHours: 2,
+                actualStartDate: "2025-11-21T08:00:00.000Z",
+                actualCompletionDate: "2025-11-21T10:00:00.000Z",
               },
             ],
           },
@@ -1244,8 +1198,9 @@ describe("WO Creation POST (e2e, NATS)", () => {
               principalFlag: "Y",
               resourceCode: RES_001,
               resourceSequenceNumber: 1,
-              plannedHours: 2,
               actualHours: 2,
+              actualStartDate: "2025-11-21T08:00:00.000Z",
+              actualCompletionDate: "2025-11-21T10:00:00.000Z",
             },
           ],
         },
