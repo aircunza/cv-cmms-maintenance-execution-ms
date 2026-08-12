@@ -243,13 +243,17 @@ model MntOperationHumanResourceUsage {
   operationCode            BigInt    @map("operation_code")
   organizationCode         String    @map("organization_code") @db.NVarChar(255)
   resourceCode             String    @map("resource_code") @db.NVarChar(255)
-  plannedHours             Float?    @map("planned_hours")
   actualHours              Float?    @map("actual_hours")
   hourlyCost               Decimal?  @map("hourly_cost") @db.Decimal(18, 2)
   principalFlag            String?   @default("N") @map("principal_flag") @db.Char(1)
   resourceSequenceNumber   Int?      @map("resource_sequence_number")
+  actualStartDate          DateTime? @map("actual_start_date") @db.DateTimeOffset
+  actualCompletionDate     DateTime? @map("actual_completion_date") @db.DateTimeOffset
   plannedStartDate         DateTime? @map("planned_start_date") @db.DateTimeOffset
   plannedCompletionDate    DateTime? @map("planned_completion_date") @db.DateTimeOffset
+  plannedHours             Float?    @map("planned_hours")
+  status                   String    @default("ACTIVE") @map("status") @db.NVarChar(30)
+  canceledReason           String?   @map("canceled_reason") @db.NVarChar(240)
   transactedInOracle       String?   @default("N") @map("transacted_in_oracle") @db.Char(1)
   oclWoOperationResourceId BigInt?   @map("ocl_wo_operation_resource_id")
   syncedToOracleAt         DateTime? @map("synced_to_oracle_at") @db.DateTimeOffset

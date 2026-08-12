@@ -397,9 +397,10 @@ export class WorkRequestsService {
         {
           resourceCode: "DEFAULT_RESOURCE",
           resourceSequenceNumber: 0,
-          plannedHours: 1,
           actualHours: 1,
           principalFlag: "N",
+          actualStartDate: now.toISOString(),
+          actualCompletionDate: oneHourLater.toISOString(),
         },
       ],
     };

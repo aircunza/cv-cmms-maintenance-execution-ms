@@ -10,6 +10,21 @@ export const OP_STATUS = {
 
 export type OperationStatus = (typeof OP_STATUS)[keyof typeof OP_STATUS];
 
+export const OP_STATUS_TRANSITIONS: Record<string, string[]> = {
+  UNRELEASED: ['ON_HOLD', 'RELEASED', 'CANCELED'],
+  RELEASED: ['COMPLETED', 'ON_HOLD', 'CANCELED'],
+  ON_HOLD: ['RELEASED', 'CANCELED'],
+  IN_PROCESS: ['COMPLETED', 'ON_HOLD', 'CANCELED'],
+  COMPLETED: ['CLOSED', 'RELEASED'],
+  NOT_DONE: ['CANCELED'],
+  CANCELED: [],
+};
+
+export function isValidOpTransition(from: string, to: string): boolean {
+  const allowed = OP_STATUS_TRANSITIONS[from];
+  return allowed ? allowed.includes(to) : false;
+}
+
 export const WO_STATUS_TO_OPERATION_STATUS: Record<string, string[]> = {
   CANCELED: ['CANCELED'],
   COMPLETED: ['COMPLETED', 'NOT_DONE'],

@@ -9,6 +9,7 @@ import {
   WorkOrderCodeDto,
   WorkOrderFilterDto,
   isValidTypeSubtypeCombination,
+  ReprogramWorkOrderDto,
 } from "./dto";
 import {
   WO_STATUS,
@@ -189,9 +190,10 @@ export class WorkOrdersService {
               {
                 resourceCode: "DEFAULT_RESOURCE",
                 resourceSequenceNumber: 0,
-                plannedHours: 1,
                 actualHours: 1,
                 principalFlag: "N",
+                actualStartDate: now.toISOString(),
+                actualCompletionDate: oneHourLater.toISOString(),
               },
             ],
           },
@@ -274,12 +276,6 @@ export class WorkOrdersService {
         }
 
         for (const res of op.workOrderOperationResource) {
-          if (res.plannedHours <= 0) {
-            throw new RpcException({
-              status: 400,
-              message: `Operation "${op.operationName}" resource "${res.resourceCode}" plannedHours must be greater than 0`,
-            });
-          }
           if (res.actualHours <= 0) {
             throw new RpcException({
               status: 400,
@@ -295,6 +291,26 @@ export class WorkOrdersService {
               message: `Operation "${op.operationName}" resource "${res.resourceCode}" resourceSequenceNumber must be a non-negative integer`,
             });
           }
+          if (!res.actualStartDate || !res.actualCompletionDate) {
+            throw new RpcException({
+              status: 400,
+              message: `Operation "${op.operationName}" resource "${res.resourceCode}" must have actualStartDate and actualCompletionDate`,
+            });
+          }
+          if (!isValidIsoDate(res.actualStartDate) || !isValidIsoDate(res.actualCompletionDate)) {
+            throw new RpcException({
+              status: 400,
+              message: `Operation "${op.operationName}" resource "${res.resourceCode}" has invalid ISO 8601 date fields`,
+            });
+          }
+          const resStart = new Date(res.actualStartDate);
+          const resCompletion = new Date(res.actualCompletionDate);
+          if (resStart >= resCompletion) {
+            throw new RpcException({
+              status: 400,
+              message: `Operation "${op.operationName}" resource "${res.resourceCode}" actualStartDate must be before actualCompletionDate`,
+            });
+          }
         }
       }
 
@@ -306,20 +322,6 @@ export class WorkOrdersService {
           message:
             "Duplicate operationSeqNumber found. Each operation must have a unique sequence number",
         });
-      }
-
-      const sortedOps = [...operations].sort(
-        (a, b) => a.operationSeqNumber - b.operationSeqNumber,
-      );
-      for (let i = 1; i < sortedOps.length; i++) {
-        const prevStart = new Date(sortedOps[i - 1].actualStartDate);
-        const currStart = new Date(sortedOps[i].actualStartDate);
-        if (currStart < prevStart) {
-          throw new RpcException({
-            status: 400,
-            message: `Operation with seqNumber ${sortedOps[i].operationSeqNumber} starts before operation with seqNumber ${sortedOps[i - 1].operationSeqNumber}`,
-          });
-        }
       }
 
       for (const op of operations) {
@@ -334,29 +336,29 @@ export class WorkOrdersService {
       }
 
       const processedOperations = operations.map((op) => {
-        const groupedBySeq: Record<number, number[]> = {};
-        for (const res of op.workOrderOperationResource) {
-          if (!groupedBySeq[res.resourceSequenceNumber]) {
-            groupedBySeq[res.resourceSequenceNumber] = [];
-          }
-          groupedBySeq[res.resourceSequenceNumber].push(res.actualHours);
-        }
-
         let calculatedActualHours = 0;
-        for (const seq of Object.keys(groupedBySeq)) {
-          const hours = groupedBySeq[Number(seq)];
-          calculatedActualHours += Math.max(...hours);
-        }
+        let opActualStartDate: Date | null = null;
+        let opActualCompletionDate: Date | null = null;
 
-        const startDate = new Date(op.actualStartDate);
-        const calculatedCompletionDate = new Date(
-          startDate.getTime() + calculatedActualHours * 3600000,
-        );
+        for (const res of op.workOrderOperationResource) {
+          calculatedActualHours += res.actualHours;
+
+          const resStart = new Date(res.actualStartDate);
+          const resCompletion = new Date(res.actualCompletionDate);
+
+          if (!opActualStartDate || resStart < opActualStartDate) {
+            opActualStartDate = resStart;
+          }
+          if (!opActualCompletionDate || resCompletion > opActualCompletionDate) {
+            opActualCompletionDate = resCompletion;
+          }
+        }
 
         return {
           ...op,
           calculatedActualHours,
-          calculatedCompletionDate,
+          calculatedActualStartDate: opActualStartDate,
+          calculatedCompletionDate: opActualCompletionDate,
         };
       });
 
@@ -377,13 +379,13 @@ export class WorkOrdersService {
           }
         }
 
-        const opStart = new Date(op.actualStartDate);
+        const opStart = op.calculatedActualStartDate;
         const opCompletion = op.calculatedCompletionDate;
 
-        if (!woActualStartDate || opStart < woActualStartDate) {
+        if (!woActualStartDate || (opStart && opStart < woActualStartDate)) {
           woActualStartDate = opStart;
         }
-        if (!woActualCompletionDate || opCompletion > woActualCompletionDate) {
+        if (!woActualCompletionDate || (opCompletion && opCompletion > woActualCompletionDate)) {
           woActualCompletionDate = opCompletion;
         }
       }
@@ -442,7 +444,7 @@ export class WorkOrdersService {
               operationSubType: op.operationSubType,
               operationStatus: op.operationStatus,
               operationType: op.operationType,
-              actualStartDate: new Date(op.actualStartDate),
+              actualStartDate: op.calculatedActualStartDate,
               actualCompletionDate: op.calculatedCompletionDate,
               actualHours: op.calculatedActualHours,
               workCenterCode: asset.workCenterCode ?? undefined,
@@ -465,13 +467,15 @@ export class WorkOrdersService {
                 operationCode: createdOp.operationCode,
                 organizationCode: asset.organizationCode,
                 resourceCode: res.resourceCode,
-                plannedHours: res.plannedHours,
                 actualHours: res.actualHours,
                 hourlyCost: res.hourlyCost,
                 principalFlag: res.principalFlag ?? "N",
                 resourceSequenceNumber: res.resourceSequenceNumber,
-                plannedStartDate: res.plannedStartDate,
-                plannedCompletionDate: res.plannedCompletionDate,
+                actualStartDate: new Date(res.actualStartDate),
+                actualCompletionDate: new Date(res.actualCompletionDate),
+                plannedStartDate: res.plannedStartDate ? new Date(res.plannedStartDate) : null,
+                plannedCompletionDate: res.plannedCompletionDate ? new Date(res.plannedCompletionDate) : null,
+                status: "ACTIVE",
                 createdBy: dto.actorId,
                 createdByName: dto.actorName,
               },
@@ -523,7 +527,11 @@ export class WorkOrdersService {
     }
   }
 
-  private mapToResponse(wo: any) {
+  private mapToResponse(wo: any, includeCanceled = false) {
+    const operations = wo.woOperations?.filter((op: any) =>
+      includeCanceled || op.operationStatus !== OP_STATUS.CANCELED
+    ) || [];
+
     return {
       workOrderCode: wo.workOrderCode.toString(),
       workOrderDescription: wo.workOrderDescription,
@@ -563,67 +571,75 @@ export class WorkOrdersService {
       closedDate: wo.closedDate,
       canceledDate: wo.canceledDate,
       canceledReason: wo.canceledReason,
-      operations: wo.woOperations?.map((op: any) => ({
-        operationCode: op.operationCode.toString(),
-        operationName: op.operationName,
-        operationDescription: op.operationDescription,
-        operationSeqNumber: op.operationSeqNumber,
-        assetCode: op.assetCode,
-        assetShortDescription: op.assetShortDescription,
-        operationStatus: op.operationStatus,
-        operationStatusLabel: toTitleCase(op.operationStatus),
-        operationType: op.operationType,
-        operationSubType: op.operationSubType,
-        actualStartDate: op.actualStartDate,
-        actualCompletionDate: op.actualCompletionDate,
-        actualHours: op.actualHours,
-        workCenterCode: op.workCenterCode,
-        workCenterDescription: op.workCenterDescription,
-        workAreaCode: op.workAreaCode,
-        workAreaDescription: op.workAreaDescription,
-        organizationCode: op.organizationCode,
-        organizationName: op.organizationName,
-        createdBy: op.createdBy,
-        createdByName: op.createdByName,
-        createdAt: op.createdAt,
-        updatedAt: op.updatedAt,
-        workOrderOperationResource: op.hrUsages?.map((hr: any) => ({
-          id: hr.id.toString(),
-          resourceCode: hr.resourceCode,
-          resourceSequenceNumber: hr.resourceSequenceNumber,
-          plannedHours: hr.plannedHours,
-          actualHours: hr.actualHours,
-          principalFlag: hr.principalFlag,
-          organizationCode: hr.organizationCode,
-          createdBy: hr.createdBy,
-          createdByName: hr.createdByName,
-          createdAt: hr.createdAt,
-          updatedAt: hr.updatedAt,
-          transactedInOracle: hr.transactedInOracle,
-          oclWoOperationResourceId:
-            hr.oclWoOperationResourceId?.toString() ?? null,
-          syncedToOracleAt: hr.syncedToOracleAt,
-        })),
-        workOrderOperationMaterial: op.materialUsages?.map((mat: any) => ({
-          id: mat.id.toString(),
-          materialCode: mat.materialCode,
-          materialName: mat.materialName,
-          materialSequenceNumber: mat.materialSequenceNumber,
-          quantity: mat.quantity,
-          supplyType: mat.supplyType,
-          unitCost: mat.unitCost?.toString() ?? null,
-          totalCost: mat.totalCost?.toString() ?? null,
-          organizationCode: mat.organizationCode,
-          createdBy: mat.createdBy,
-          createdByName: mat.createdByName,
-          createdAt: mat.createdAt,
-          updatedAt: mat.updatedAt,
-          transactedInOracle: mat.transactedInOracle,
-          oclWoOperationMaterialId:
-            mat.oclWoOperationMaterialId?.toString() ?? null,
-          syncedToOracleAt: mat.syncedToOracleAt,
-        })),
-      })),
+      operations: operations.map((op: any) => {
+        const hrUsages = op.hrUsages?.filter((hr: any) =>
+          includeCanceled || hr.status !== "CANCELED"
+        ) || [];
+
+        return {
+          operationCode: op.operationCode.toString(),
+          operationName: op.operationName,
+          operationDescription: op.operationDescription,
+          operationSeqNumber: op.operationSeqNumber,
+          assetCode: op.assetCode,
+          assetShortDescription: op.assetShortDescription,
+          operationStatus: op.operationStatus,
+          operationStatusLabel: toTitleCase(op.operationStatus),
+          operationType: op.operationType,
+          operationSubType: op.operationSubType,
+          actualStartDate: op.actualStartDate,
+          actualCompletionDate: op.actualCompletionDate,
+          actualHours: op.actualHours,
+          workCenterCode: op.workCenterCode,
+          workCenterDescription: op.workCenterDescription,
+          workAreaCode: op.workAreaCode,
+          workAreaDescription: op.workAreaDescription,
+          organizationCode: op.organizationCode,
+          organizationName: op.organizationName,
+          createdBy: op.createdBy,
+          createdByName: op.createdByName,
+          createdAt: op.createdAt,
+          updatedAt: op.updatedAt,
+          workOrderOperationResource: hrUsages.map((hr: any) => ({
+            id: hr.id.toString(),
+            resourceCode: hr.resourceCode,
+            resourceSequenceNumber: hr.resourceSequenceNumber,
+            actualHours: hr.actualHours,
+            principalFlag: hr.principalFlag,
+            actualStartDate: hr.actualStartDate,
+            actualCompletionDate: hr.actualCompletionDate,
+            status: hr.status,
+            organizationCode: hr.organizationCode,
+            createdBy: hr.createdBy,
+            createdByName: hr.createdByName,
+            createdAt: hr.createdAt,
+            updatedAt: hr.updatedAt,
+            transactedInOracle: hr.transactedInOracle,
+            oclWoOperationResourceId:
+              hr.oclWoOperationResourceId?.toString() ?? null,
+            syncedToOracleAt: hr.syncedToOracleAt,
+          })),
+          workOrderOperationMaterial: op.materialUsages?.map((mat: any) => ({
+            id: mat.id.toString(),
+            materialCode: mat.materialCode,
+            materialName: mat.materialName,
+            materialSequenceNumber: mat.materialSequenceNumber,
+            quantity: mat.quantity,
+            supplyType: mat.supplyType,
+            unitCost: mat.unitCost?.toString() ?? null,
+            totalCost: mat.totalCost?.toString() ?? null,
+            organizationCode: mat.organizationCode,
+            createdBy: mat.createdBy,
+            createdByName: mat.createdByName,
+            createdAt: mat.createdAt,
+            updatedAt: mat.updatedAt,
+            transactedInOracle: mat.transactedInOracle,
+            oclWoOperationMaterialId:
+              mat.oclWoOperationMaterialId?.toString() ?? null,
+            syncedToOracleAt: mat.syncedToOracleAt,
+          })),
+        };
+      }),
     };
   }
 
@@ -1318,21 +1334,48 @@ export class WorkOrdersService {
         });
       }
 
-      await this.prisma.mntWoOperation.updateMany({
-        where: { workOrderCode: BigInt(String(workOrderCode)) },
-        data: { operationStatus: OP_STATUS.CANCELED },
+      await this.prisma.$transaction(async (tx) => {
+        const operations = await tx.mntWoOperation.findMany({
+          where: { workOrderCode: BigInt(String(workOrderCode)) },
+        });
+
+        for (const op of operations) {
+          await tx.mntOperationHumanResourceUsage.updateMany({
+            where: { operationCode: op.operationCode },
+            data: {
+              status: "CANCELED",
+              updatedBy: actorId,
+              updatedByName: actorName,
+              updatedAt: new Date(),
+            },
+          });
+
+          await tx.mntWoOperation.update({
+            where: { operationCode: op.operationCode },
+            data: {
+              operationStatus: OP_STATUS.CANCELED,
+              updatedBy: actorId,
+              updatedByName: actorName,
+              updatedAt: new Date(),
+            },
+          });
+        }
+
+        await tx.mntWorkOrder.update({
+          where: { workOrderCode: BigInt(String(workOrderCode)) },
+          data: {
+            woStatusCode: WO_STATUS.CANCELED,
+            canceledDate: new Date(),
+            canceledReason,
+            updatedBy: actorId,
+            updatedByName: actorName,
+            updatedAt: new Date(),
+          },
+        });
       });
 
-      const updated = await this.prisma.mntWorkOrder.update({
+      const updated = await this.prisma.mntWorkOrder.findFirst({
         where: { workOrderCode: BigInt(String(workOrderCode)) },
-        data: {
-          woStatusCode: WO_STATUS.CANCELED,
-          canceledDate: new Date(),
-          canceledReason,
-          updatedBy: actorId,
-          updatedByName: actorName,
-          updatedAt: new Date(),
-        },
         include: {
           woOperations: {
             include: {
@@ -1464,6 +1507,158 @@ export class WorkOrdersService {
       });
 
       return { workOrder: this.mapToResponse(updated) };
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({ status: 500, message: "Internal server error" });
+    }
+  }
+
+  async reprogram(
+    workOrderCode: number | string,
+    organizationCode: string,
+    userPermissions: string[],
+    userRoles: string[],
+    actorId: string,
+    actorName: string,
+    dto: ReprogramWorkOrderDto,
+  ) {
+    try {
+      this.validateReadContext({ organizationCode, userRoles });
+
+      if (!dto.newActualStartDate || !isValidIsoDate(dto.newActualStartDate)) {
+        throw new RpcException({
+          status: 400,
+          message: "newActualStartDate is required and must be a valid ISO 8601 datetime",
+        });
+      }
+
+      const existing = await this.prisma.mntWorkOrder.findFirst({
+        where: { workOrderCode: BigInt(String(workOrderCode)) },
+        include: {
+          woOperations: {
+            include: {
+              hrUsages: true,
+            },
+          },
+        },
+      });
+
+      if (!existing) {
+        throw new RpcException({
+          status: 404,
+          message: "Work order not found",
+        });
+      }
+
+      if (existing.organizationCode !== organizationCode) {
+        throw new RpcException({
+          status: 403,
+          message: "ORGANIZATION_MISMATCH",
+        });
+      }
+
+      if (
+        existing.woStatusCode === WO_STATUS.CANCELED ||
+        existing.woStatusCode === WO_STATUS.CLOSED
+      ) {
+        throw new RpcException({
+          status: 400,
+          message: `Cannot reprogram work order with status ${existing.woStatusCode}`,
+        });
+      }
+
+      if (!existing.actualStartDate) {
+        throw new RpcException({
+          status: 400,
+          message: "Work order has no actualStartDate to reprogram from",
+        });
+      }
+
+      const currentStartDate = new Date(existing.actualStartDate);
+      const newStartDate = new Date(dto.newActualStartDate);
+      const deltaMs = newStartDate.getTime() - currentStartDate.getTime();
+
+      await this.prisma.$transaction(async (tx) => {
+        for (const op of existing.woOperations) {
+          if (op.operationStatus === OP_STATUS.CANCELED) continue;
+
+          const opNewStart = op.actualStartDate
+            ? new Date(op.actualStartDate.getTime() + deltaMs)
+            : null;
+          const opNewCompletion = op.actualCompletionDate
+            ? new Date(op.actualCompletionDate.getTime() + deltaMs)
+            : null;
+
+          await tx.mntWoOperation.update({
+            where: { operationCode: op.operationCode },
+            data: {
+              actualStartDate: opNewStart,
+              actualCompletionDate: opNewCompletion,
+              updatedBy: actorId,
+              updatedByName: actorName,
+              updatedAt: new Date(),
+            },
+          });
+
+          for (const hr of op.hrUsages) {
+            if (hr.status === "CANCELED") continue;
+
+            const hrNewStart = hr.actualStartDate
+              ? new Date(hr.actualStartDate.getTime() + deltaMs)
+              : null;
+            const hrNewCompletion = hr.actualCompletionDate
+              ? new Date(hr.actualCompletionDate.getTime() + deltaMs)
+              : null;
+
+            await tx.mntOperationHumanResourceUsage.update({
+              where: { id: hr.id },
+              data: {
+                actualStartDate: hrNewStart,
+                actualCompletionDate: hrNewCompletion,
+                updatedBy: actorId,
+                updatedByName: actorName,
+                updatedAt: new Date(),
+              },
+            });
+          }
+        }
+
+        let newWoCompletionDate: Date | null = null;
+        for (const op of existing.woOperations) {
+          if (op.operationStatus === OP_STATUS.CANCELED) continue;
+          const opCompletion = op.actualCompletionDate
+            ? new Date(op.actualCompletionDate.getTime() + deltaMs)
+            : null;
+          if (opCompletion && (!newWoCompletionDate || opCompletion > newWoCompletionDate)) {
+            newWoCompletionDate = opCompletion;
+          }
+        }
+
+        await tx.mntWorkOrder.update({
+          where: { workOrderCode: BigInt(String(workOrderCode)) },
+          data: {
+            actualStartDate: newStartDate,
+            actualCompletionDate: newWoCompletionDate,
+            updatedBy: actorId,
+            updatedByName: actorName,
+            updatedAt: new Date(),
+          },
+        });
+      });
+
+      const updated = await this.prisma.mntWorkOrder.findFirst({
+        where: { workOrderCode: BigInt(String(workOrderCode)) },
+        include: {
+          woOperations: {
+            include: {
+              hrUsages: true,
+              materialUsages: true,
+            },
+          },
+        },
+      });
+
+      return { workOrder: this.mapToResponse(updated!) };
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({ status: 500, message: "Internal server error" });

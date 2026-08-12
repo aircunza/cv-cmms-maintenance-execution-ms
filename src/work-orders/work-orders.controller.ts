@@ -6,6 +6,7 @@ import {
   UpdateWorkOrderDto,
   FindAllWorkOrderDto,
   WorkOrderCodeDto,
+  ReprogramWorkOrderDto,
 } from "./dto";
 
 @Controller("work-orders")
@@ -163,6 +164,30 @@ export class WorkOrdersController {
       dto.userRoles,
       dto.actorId,
       dto.actorName,
+    );
+  }
+
+  @MessagePattern("work.order.reprogram")
+  reprogram(
+    @Payload()
+    dto: ReprogramWorkOrderDto & {
+      workOrderCode: number | string;
+      organizationCode: string;
+      userPermissions: string[];
+      userRoles: string[];
+      actorId: string;
+      actorName: string;
+    },
+  ) {
+    const { workOrderCode, organizationCode, userPermissions, userRoles, actorId, actorName, ...reprogramDto } = dto;
+    return this.workOrdersService.reprogram(
+      workOrderCode,
+      organizationCode,
+      userPermissions,
+      userRoles,
+      actorId,
+      actorName,
+      reprogramDto,
     );
   }
 }

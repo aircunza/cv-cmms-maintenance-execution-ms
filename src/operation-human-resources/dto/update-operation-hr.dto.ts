@@ -1,13 +1,13 @@
-import { IsString, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsOptional, MaxLength, IsDateString, IsNumber, Min } from 'class-validator';
 
 export class UpdateOperationHrDto {
   @IsOptional()
-  plannedHours?: number;
-
-  @IsOptional()
+  @IsNumber()
+  @Min(0.0001)
   actualHours?: number;
 
   @IsOptional()
+  @IsNumber()
   hourlyCost?: number;
 
   @IsString()
@@ -16,11 +16,18 @@ export class UpdateOperationHrDto {
   principalFlag?: string;
 
   @IsOptional()
-  plannedStartDate?: Date;
+  @IsDateString()
+  actualStartDate?: string;
 
   @IsOptional()
-  plannedCompletionDate?: Date;
+  @IsDateString()
+  actualCompletionDate?: string;
 
   @IsOptional()
-  usageRate?: number;
+  @IsDateString()
+  plannedStartDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  plannedCompletionDate?: string;
 }

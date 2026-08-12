@@ -4,6 +4,7 @@ import { WoOperationsService } from "./wo-operations.service";
 import {
   CreateWoOperationDto,
   UpdateWoOperationDto,
+  CancelWoOperationDto,
   FindAllWoOperationDto,
   WoOperationCodeDto,
 } from "./dto";
@@ -55,6 +56,28 @@ export class WoOperationsController {
       dto.operationCode,
       dto.actorId,
       dto.actorName,
+    );
+  }
+
+  @MessagePattern("wo.operation.cancel")
+  cancel(
+    @Payload()
+    dto: CancelWoOperationDto & {
+      operationCode: number;
+      workOrderCode: number | string;
+      organizationCode: string;
+      actorId: string;
+      actorName: string;
+    },
+  ) {
+    const { operationCode, workOrderCode, organizationCode, actorId, actorName, ...cancelDto } = dto;
+    return this.woOperationsService.cancel(
+      operationCode,
+      workOrderCode,
+      organizationCode,
+      actorId,
+      actorName,
+      cancelDto,
     );
   }
 }

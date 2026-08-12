@@ -1,23 +1,28 @@
-import { IsString, IsOptional, IsNotEmpty, MaxLength, IsNumber, Min, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNotEmpty,
+  MaxLength,
+  IsNumber,
+  Min,
+  IsIn,
+  IsDateString,
+} from "class-validator";
 
 export class CreateOperationHrDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
-  organizationCode: string;
+  organizationCode!: string;
 
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
-  resourceCode: string;
+  resourceCode!: string;
 
   @IsNumber()
   @Min(0.0001)
-  plannedHours: number;
-
-  @IsNumber()
-  @Min(0.0001)
-  actualHours: number;
+  actualHours!: number;
 
   @IsOptional()
   @IsNumber()
@@ -26,16 +31,24 @@ export class CreateOperationHrDto {
   @IsString()
   @IsOptional()
   @MaxLength(1)
-  @IsIn(['Y', 'N'])
+  @IsIn(["Y", "N"])
   principalFlag?: string;
 
   @IsNumber()
   @Min(0)
-  resourceSequenceNumber: number;
+  resourceSequenceNumber!: number;
+
+  @IsDateString()
+  actualStartDate!: string;
+
+  @IsDateString()
+  actualCompletionDate!: string;
 
   @IsOptional()
-  plannedStartDate?: Date;
+  @IsDateString()
+  plannedStartDate?: string;
 
   @IsOptional()
-  plannedCompletionDate?: Date;
+  @IsDateString()
+  plannedCompletionDate?: string;
 }

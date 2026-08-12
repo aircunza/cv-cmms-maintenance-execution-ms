@@ -11,17 +11,13 @@ export class UpdateWoOperationDto {
   @MaxLength(240)
   operationDescription?: string;
 
-  @IsOptional()
-  actualStartDate?: Date;
-
-  @IsOptional()
-  actualCompletionDate?: Date;
-
-  @IsOptional()
-  actualHours?: number;
-
   @IsString()
   @IsOptional()
   @MaxLength(30)
   operationStatus?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(30)
+  operationType?: string;
 }

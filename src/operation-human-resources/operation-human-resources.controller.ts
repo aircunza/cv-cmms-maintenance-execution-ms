@@ -4,6 +4,7 @@ import { OperationHumanResourcesService } from './operation-human-resources.serv
 import {
   CreateOperationHrDto,
   UpdateOperationHrDto,
+  CancelOperationHrDto,
   FindAllOperationHrDto,
 } from './dto';
 
@@ -24,5 +25,25 @@ export class OperationHumanResourcesController {
   @MessagePattern('operation.hr.update')
   update(@Payload() dto: UpdateOperationHrDto & { id: number; actorId: string; actorName: string }) {
     return this.operationHumanResourcesService.update(dto);
+  }
+
+  @MessagePattern('operation.hr.cancel')
+  cancel(
+    @Payload()
+    dto: CancelOperationHrDto & {
+      id: number;
+      operationCode: number;
+      actorId: string;
+      actorName: string;
+    },
+  ) {
+    const { id, operationCode, actorId, actorName, ...cancelDto } = dto;
+    return this.operationHumanResourcesService.cancel(
+      id,
+      operationCode,
+      actorId,
+      actorName,
+      cancelDto,
+    );
   }
 }
