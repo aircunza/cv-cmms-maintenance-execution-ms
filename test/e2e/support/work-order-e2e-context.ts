@@ -161,7 +161,7 @@ export function defaultWoPayload(
     enableOracleWorkOrder: "N",
     workOrderDescription: "E2E Work Order Test",
     woStatusCode: "UNRELEASED",
-    assetCode: "E2E_WO_AST_001",
+    assetCode: "AST-001",
     workOrderType: "Planned",
     workOrderSubType: "Preventive",
     workOrderPriority: "2",

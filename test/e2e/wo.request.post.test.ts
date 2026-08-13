@@ -28,7 +28,7 @@ describe("WO Request POST (e2e, NATS)", () => {
 
     expect(response.workRequest).toBeDefined();
     expect(response.workRequest.requestId).toBeDefined();
-    expect(response.workRequest.assetCode).toBe("E2E_WR_AST_001");
+    expect(response.workRequest.assetCode).toBe("AST-001");
     expect(response.workRequest.issueDescription).toBe(
       "Hydraulic leak reported in unit A",
     );
@@ -116,7 +116,7 @@ describe("WO Request POST (e2e, NATS)", () => {
   it("rejects request when asset is inactive", async () => {
     await assertRpcError(
       createWorkRequest(context, {
-        assetCode: "E2E_WR_AST_003_INACTIVE",
+        assetCode: "AST-007",
       }),
       404,
       "Asset not found or inactive",
@@ -126,7 +126,7 @@ describe("WO Request POST (e2e, NATS)", () => {
   it("rejects request when asset belongs to another organization", async () => {
     await assertRpcError(
       createWorkRequest(context, {
-        assetCode: "E2E_WO_AST_OTHER_ORG",
+        assetCode: "AST-008",
       }),
       403,
     );

@@ -1,8 +1,8 @@
 export const mockOrganizations = [
   {
-    id: "e2e-org-001",
-    code: "E2E_ORG_WR",
-    name: "E2E ORG WORK REQUEST",
+    id: "10000000-0000-4000-8000-000000000001",
+    code: "ORG-LIMA-001",
+    name: "Empresa 1",
   },
   {
     id: "e2e-org-002",

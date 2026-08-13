@@ -159,7 +159,7 @@ export function defaultWorkRequestPayload(
   overrides: Record<string, unknown> = {},
 ): Record<string, unknown> {
   return {
-    assetCode: "E2E_WR_AST_001",
+    assetCode: "AST-001",
     issueDescription: `E2E issue ${Date.now()}-${Math.random()}`,
     enableOracleWorkOrder: "N",
     actorId: context.actor.id,

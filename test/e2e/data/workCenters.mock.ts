@@ -1,9 +1,30 @@
 export const mockWorkCenters = [
   {
-    workCenterId: "dc6f4dc1-4f4c-460e-ac52-2992213370b6",
-    workCenterCode: "E2E_WR_CENTER",
-    workCenterDescription: "E2E WR CENTER",
-    workAreaId: "e5ccdc52-c990-451a-a34f-2d268f8b1f11",
-    centerCostCode: 8271,
+    workCenterId: "10000000-0000-4000-8000-0000000000B1",
+    workCenterCode: "WC-001",
+    workCenterDescription: "Central Mechanical Workshop",
+    workAreaId: "10000000-0000-4000-8000-0000000000A1",
+    centerCostCode: 1001,
+  },
+  {
+    workCenterId: "10000000-0000-4000-8000-0000000000B2",
+    workCenterCode: "WC-002",
+    workCenterDescription: "Grinding Workshop",
+    workAreaId: "10000000-0000-4000-8000-0000000000A2",
+    centerCostCode: 1002,
+  },
+  {
+    workCenterId: "10000000-0000-4000-8000-0000000000B3",
+    workCenterCode: "WC-003",
+    workCenterDescription: "Electrical Workshop",
+    workAreaId: "10000000-0000-4000-8000-0000000000A1",
+    centerCostCode: 1003,
+  },
+  {
+    workCenterId: "10000000-0000-4000-8000-0000000000B4",
+    workCenterCode: "WC-004",
+    workCenterDescription: "General Services",
+    workAreaId: "10000000-0000-4000-8000-0000000000A3",
+    centerCostCode: 1004,
   },
 ];

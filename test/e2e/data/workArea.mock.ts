@@ -1,8 +1,20 @@
 export const mockWorkAreas = [
   {
-    workAreaId: "e5ccdc52-c990-451a-a34f-2d268f8b1f11",
-    workAreaCode: "E2E_WR_AREA",
-    workAreaDescription: "E2E WR AREA",
-    organizationCode: "E2E_ORG_WR",
+    workAreaId: "10000000-0000-4000-8000-0000000000A1",
+    workAreaCode: "WA-001",
+    workAreaDescription: "Production Area 1",
+    organizationCode: "ORG-LIMA-001",
+  },
+  {
+    workAreaId: "10000000-0000-4000-8000-0000000000A2",
+    workAreaCode: "WA-002",
+    workAreaDescription: "Grinding Area",
+    organizationCode: "ORG-LIMA-001",
+  },
+  {
+    workAreaId: "10000000-0000-4000-8000-0000000000A3",
+    workAreaCode: "WA-003",
+    workAreaDescription: "Energy and Services Area",
+    organizationCode: "ORG-LIMA-001",
   },
 ];

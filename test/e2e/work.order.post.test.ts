@@ -66,7 +66,7 @@ describe("WO Creation POST (e2e, NATS)", () => {
       expect(response.workOrder).toBeDefined();
       expect(response.workOrder.workOrderCode).toBeDefined();
       expect(response.workOrder.workOrderDescription).toBe("E2E Work Order Test");
-      expect(response.workOrder.assetCode).toBe("E2E_WO_AST_001");
+      expect(response.workOrder.assetCode).toBe("AST-001");
       expect(response.workOrder.woStatusCode).toBe("UNRELEASED");
       expect(response.workOrder.woStatusLabel).toBe("Unreleased");
       expect(response.workOrder.workOrderType).toBe("Planned");
@@ -486,8 +486,8 @@ describe("WO Creation POST (e2e, NATS)", () => {
     const response = await createWorkOrder(context);
 
     const op = response.workOrder.operations[0];
-    expect(op.assetCode).toBe("E2E_WO_AST_001");
-    expect(op.assetShortDescription).toBe("E2E WO AST 001");
+    expect(op.assetCode).toBe("AST-001");
+    expect(op.assetShortDescription).toBe("Primary crusher");
     expect(op.organizationCode).toBe(context.organizationCode);
   });
 
@@ -1099,7 +1099,7 @@ describe("WO Creation POST (e2e, NATS)", () => {
 
   it("rejects when asset is inactive", async () => {
     await assertRpcError(
-      createWorkOrder(context, { assetCode: "E2E_WR_AST_003_INACTIVE" }),
+      createWorkOrder(context, { assetCode: "AST-007" }),
       404,
       "Asset not found or inactive",
     );
@@ -1134,7 +1134,7 @@ describe("WO Creation POST (e2e, NATS)", () => {
     await assertRpcError(
       sendPattern(context.client, "work.order.create", {
         ...defaultWoPayload(context),
-        assetCode: "E2E_WO_AST_OTHER_ORG",
+        assetCode: "AST-008",
         organizationCode: context.organizationCode,
       }),
       403,
