@@ -106,8 +106,6 @@ These fields are injected by the gateway and SHALL NOT be provided by the client
 | workDefinitionCode    | string          | -       | Work definition code.                               |
 | schedulingMethod      | string          | -       | Scheduling method.                                  |
 | needByDate            | Date (ISO 8601) | -       | Date by which the work order needs to be completed. |
-| plannedStartDate      | Date (ISO 8601) | -       | Planned start date (for advanced scheduling).       |
-| plannedCompletionDate | Date (ISO 8601) | -       | Planned completion date (for advanced scheduling).  |
 
 #### Operation Object Structure
 
@@ -146,7 +144,6 @@ Each resource in `workOrderOperationResource` must contain:
 | ---------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
 | resourceCode           | string            | Resource identifier.                                                                        |
 | resourceSequenceNumber | integer (>= 0)    | Sequence number for Oracle Fusion integration. Does NOT affect calculations in this system. |
-| plannedHours           | number (> 0)      | Planned hours for the resource.                                                             |
 | actualHours            | number (> 0)      | Actual hours for the resource. Must be greater than 0.                                      |
 | principalFlag          | string ("Y"\|"N") | Principal flag indicator.                                                                   |
 | actualStartDate        | string (ISO 8601) | Actual start date for the resource. Must be before actualCompletionDate.                    |
@@ -157,8 +154,6 @@ Each resource in `workOrderOperationResource` must contain:
 | Field                 | Type   | Description                           |
 | --------------------- | ------ | ------------------------------------- |
 | hourlyCost            | number | Hourly cost of the resource.          |
-| plannedStartDate      | Date   | Planned start date for the resource.  |
-| plannedCompletionDate | Date   | Planned completion date for resource. |
 
 #### Material Object Structure (Optional)
 
@@ -200,7 +195,6 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
 | organizationCode      | string        | Organization code.                                                                          |
 | organizationName      | string        | Organization name (inferred from asset).                                                    |
 | assetShortDescription | string        | Asset short description (inferred from asset).                                              |
-| plannedHours          | Float         | Planned hours (aggregated).                                                                 |
 | releasedDate          | DateTime      | Release timestamp.                                                                          |
 | closedDate            | DateTime      | Close timestamp.                                                                            |
 | canceledDate          | DateTime      | Cancellation timestamp.                                                                     |
@@ -235,9 +229,6 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
 | organizationName      | string   | Organization name.                                             |
 | oclWorkOrderId        | BigInt   | Oracle Cloud work order ID.                                    |
 | oclWorkOrderNumber    | string   | Oracle Cloud work order number.                                |
-| plannedStartDate      | DateTime | Planned start date.                                            |
-| plannedCompletionDate | DateTime | Planned completion date.                                       |
-| plannedHours          | Float    | Planned hours.                                                 |
 | reviewedBy            | string   | Reviewed by user.                                              |
 | reviewedByName        | string   | Reviewed by user name.                                         |
 | reviewedAt            | DateTime | Review timestamp.                                              |
@@ -315,7 +306,6 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
           "principalFlag": "Y",
           "resourceCode": "RES-001",
           "resourceSequenceNumber": 1,
-          "plannedHours": 2,
           "actualHours": 2,
           "actualStartDate": "2025-11-21T08:00:00.000Z",
           "actualCompletionDate": "2025-11-21T10:00:00.000Z"
@@ -324,7 +314,6 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
           "principalFlag": "N",
           "resourceCode": "RES-002",
           "resourceSequenceNumber": 1,
-          "plannedHours": 3,
           "actualHours": 3,
           "actualStartDate": "2025-11-21T08:00:00.000Z",
           "actualCompletionDate": "2025-11-21T11:00:00.000Z"
@@ -354,7 +343,6 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
           "principalFlag": "Y",
           "resourceCode": "RES-001",
           "resourceSequenceNumber": 1,
-          "plannedHours": 2,
           "actualHours": 2,
           "actualStartDate": "2025-11-21T11:00:00.000Z",
           "actualCompletionDate": "2025-11-21T13:00:00.000Z"
@@ -363,7 +351,6 @@ These fields are calculated or managed by the system and SHALL NOT be provided w
           "principalFlag": "N",
           "resourceCode": "RES-003",
           "resourceSequenceNumber": 2,
-          "plannedHours": 1,
           "actualHours": 1,
           "actualStartDate": "2025-11-21T13:00:00.000Z",
           "actualCompletionDate": "2025-11-21T14:00:00.000Z"
@@ -481,11 +468,6 @@ EACH resource in an operation MUST have `actualHours > 0`. IF any resource has `
 THEN the system SHALL reject the request.
 
 **R-WO-CR-18**
-
-IF a resource's `plannedHours` is not greater than 0,  
-THEN the system SHALL reject the request.
-
-**R-WO-CR-19**
 
 IF a resource's `actualHours` is not greater than 0,  
 THEN the system SHALL reject the request.
@@ -669,7 +651,6 @@ the system SHALL return a 201 status with the created Work Order wrapped in a `w
     "actualHours": 12,
     "totalManHours": 10,
     "totalSupplierHours": 2,
-    "plannedHours": null,
     "workRequestId": null,
     "enableOracleWorkOrder": "N",
     "oclWorkOrderId": null,
@@ -708,7 +689,6 @@ the system SHALL return a 201 status with the created Work Order wrapped in a `w
             "id": 10001,
             "resourceCode": "RES-001",
             "resourceSequenceNumber": 1,
-            "plannedHours": 2,
             "actualHours": 2,
             "principalFlag": "Y",
             "actualStartDate": "2025-11-21T08:00:00.000Z",
@@ -727,7 +707,6 @@ the system SHALL return a 201 status with the created Work Order wrapped in a `w
             "id": 10002,
             "resourceCode": "RES-002",
             "resourceSequenceNumber": 1,
-            "plannedHours": 3,
             "actualHours": 3,
             "principalFlag": "N",
             "actualStartDate": "2025-11-21T08:00:00.000Z",
@@ -793,7 +772,6 @@ the system SHALL return a 201 status with the created Work Order wrapped in a `w
             "id": 10003,
             "resourceCode": "RES-001",
             "resourceSequenceNumber": 1,
-            "plannedHours": 2,
             "actualHours": 2,
             "principalFlag": "Y",
             "actualStartDate": "2025-11-21T11:00:00.000Z",
@@ -812,7 +790,6 @@ the system SHALL return a 201 status with the created Work Order wrapped in a `w
             "id": 10004,
             "resourceCode": "RES-003",
             "resourceSequenceNumber": 2,
-            "plannedHours": 1,
             "actualHours": 1,
             "principalFlag": "N",
             "actualStartDate": "2025-11-21T13:00:00.000Z",
@@ -1781,7 +1758,7 @@ Gateway endpoint: `PATCH /api/v1/work-orders/:workOrderCode/pending-approval`
 
 ### Purpose
 
-Transitions a Work Order from `PENDING_APPROVAL` to `UNRELEASED` status.
+Transitions a Work Order from `PENDING_APPROVAL` to `UNRELEASED` status. `PENDING_APPROVAL` is an **initial creation status only**: it SHALL NOT be reached by transitioning from any other status. A Work Order is created with `PENDING_APPROVAL` (or without approval, e.g., `UNRELEASED`); once created, it must leave `PENDING_APPROVAL` through this endpoint.
 
 ### Gateway-Injected Fields
 
@@ -1804,9 +1781,9 @@ THEN the system SHALL reject the request with a 404 status.
 IF the Work Order's current status is not `PENDING_APPROVAL`,  
 THEN the system SHALL reject the request with a 400 status.
 
-Allowed transitions from `PENDING_APPROVAL`:
+`PENDING_APPROVAL` is only reachable as the Work Order's **initial status at creation time**. It SHALL NOT be reachable from any other status through a transition. The only transition that leaves `PENDING_APPROVAL` is:
 
-- `PENDING_APPROVAL` → `UNRELEASED`
+- `PENDING_APPROVAL` → `UNRELEASED` (via this endpoint)
 
 ### Full Status Transition Reference
 

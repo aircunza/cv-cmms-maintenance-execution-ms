@@ -38,12 +38,4 @@ export class CreateWoOperationResourceDto {
   @IsOptional()
   @IsNumber()
   hourlyCost?: number;
-
-  @IsOptional()
-  @IsDateString()
-  plannedStartDate?: string;
-
-  @IsOptional()
-  @IsDateString()
-  plannedCompletionDate?: string;
 }

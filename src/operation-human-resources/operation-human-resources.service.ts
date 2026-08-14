@@ -60,8 +60,6 @@ export class OperationHumanResourcesService {
             resourceSequenceNumber: dto.resourceSequenceNumber,
             actualStartDate,
             actualCompletionDate,
-            plannedStartDate: dto.plannedStartDate ? new Date(dto.plannedStartDate) : null,
-            plannedCompletionDate: dto.plannedCompletionDate ? new Date(dto.plannedCompletionDate) : null,
             status: 'ACTIVE',
             createdBy: dto.actorId,
             createdByName: dto.actorName,
@@ -139,12 +137,6 @@ export class OperationHumanResourcesService {
       }
       if (dto.actualCompletionDate !== undefined) {
         updateData.actualCompletionDate = new Date(dto.actualCompletionDate);
-      }
-      if (dto.plannedStartDate !== undefined) {
-        updateData.plannedStartDate = dto.plannedStartDate ? new Date(dto.plannedStartDate) : null;
-      }
-      if (dto.plannedCompletionDate !== undefined) {
-        updateData.plannedCompletionDate = dto.plannedCompletionDate ? new Date(dto.plannedCompletionDate) : null;
       }
 
       if (updateData.actualStartDate && updateData.actualCompletionDate) {

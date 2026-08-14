@@ -22,12 +22,4 @@ export class UpdateOperationHrDto {
   @IsOptional()
   @IsDateString()
   actualCompletionDate?: string;
-
-  @IsOptional()
-  @IsDateString()
-  plannedStartDate?: string;
-
-  @IsOptional()
-  @IsDateString()
-  plannedCompletionDate?: string;
 }

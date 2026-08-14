@@ -85,10 +85,4 @@ export class CreateWorkOrderDto {
 
   @IsOptional()
   needByDate?: Date;
-
-  @IsOptional()
-  plannedStartDate?: Date;
-
-  @IsOptional()
-  plannedCompletionDate?: Date;
 }

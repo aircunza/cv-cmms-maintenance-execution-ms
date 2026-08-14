@@ -1,4 +1,6 @@
-import { IsString, IsOptional, IsNotEmpty, MaxLength, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty, MaxLength, IsNumber, IsArray, ArrayNotEmpty, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { CreateWoOperationResourceDto } from './create-wo-operation-resource.dto';
 
 export class CreateWoOperationDto {
   @IsString()
@@ -58,22 +60,20 @@ export class CreateWoOperationDto {
   operationType?: string;
 
   @IsOptional()
-  plannedStartDate?: Date;
-
-  @IsOptional()
-  plannedCompletionDate?: Date;
-
-  @IsOptional()
   actualStartDate?: Date;
 
   @IsOptional()
   actualCompletionDate?: Date;
 
   @IsOptional()
-  plannedHours?: number;
+  actualHours?: number;
 
   @IsOptional()
-  actualHours?: number;
+  @IsArray()
+  @ArrayNotEmpty()
+  @ValidateNested({ each: true })
+  @Type(() => CreateWoOperationResourceDto)
+  resources?: CreateWoOperationResourceDto[];
 
   @IsString()
   @IsOptional()

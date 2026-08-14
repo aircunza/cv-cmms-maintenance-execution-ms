@@ -68,12 +68,6 @@ export class CreateWorkOrderMessageDto {
   @IsOptional()
   needByDate?: Date;
 
-  @IsOptional()
-  plannedStartDate?: Date;
-
-  @IsOptional()
-  plannedCompletionDate?: Date;
-
   @IsString()
   @IsNotEmpty()
   actorId!: string;

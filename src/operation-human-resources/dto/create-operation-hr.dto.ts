@@ -43,12 +43,4 @@ export class CreateOperationHrDto {
 
   @IsDateString()
   actualCompletionDate!: string;
-
-  @IsOptional()
-  @IsDateString()
-  plannedStartDate?: string;
-
-  @IsOptional()
-  @IsDateString()
-  plannedCompletionDate?: string;
 }

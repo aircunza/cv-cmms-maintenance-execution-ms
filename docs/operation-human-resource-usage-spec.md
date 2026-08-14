@@ -21,7 +21,6 @@ Creates a new human resource usage record within an existing operation. Each res
 | operationCode          | BigInt            | Parent operation identifier.                                 |
 | resourceCode           | string            | Resource identifier (references MntHumanResource).           |
 | resourceSequenceNumber | integer (>= 0)    | Sequence number for Oracle integration (does not affect calculations). |
-| plannedHours           | number (> 0)      | Planned hours for the resource.                              |
 | actualHours            | number (> 0)      | Actual hours for the resource. Must be greater than 0.       |
 | actualStartDate        | string (ISO 8601) | Actual start date for the resource. Must be before actualCompletionDate. |
 | actualCompletionDate   | string (ISO 8601) | Actual completion date for the resource. Must be after actualStartDate. |
@@ -32,8 +31,6 @@ Creates a new human resource usage record within an existing operation. Each res
 | --------------------- | ----------------- | ------------------------------------- |
 | hourlyCost            | number            | Hourly cost of the resource.          |
 | principalFlag         | string ("Y"\|"N") | Principal flag indicator. Default "N".|
-| plannedStartDate      | Date              | Planned start date for the resource.  |
-| plannedCompletionDate | Date              | Planned completion date for resource. |
 
 ### Validations
 
@@ -59,27 +56,22 @@ THEN the system SHALL reject the request with a 400 status.
 
 **R-HR-CR-05**
 
-IF `plannedHours <= 0`,  
+IF `actualStartDate` is not before `actualCompletionDate`,  
 THEN the system SHALL reject the request with a 400 status.
 
 **R-HR-CR-06**
 
-IF `actualStartDate` is not before `actualCompletionDate`,  
-THEN the system SHALL reject the request with a 400 status.
-
-**R-HR-CR-07**
-
 IF `resourceSequenceNumber` is not a non-negative integer,  
 THEN the system SHALL reject the request with a 400 status.
 
-**R-HR-CR-08**
+**R-HR-CR-07**
 
 IF a resource with the same `resourceCode` and `resourceSequenceNumber` already exists within the same operation,  
 THEN the system SHALL reject the request with a 400 status.
 
 ### Processing
 
-**R-HR-CR-09**
+**R-HR-CR-08**
 
 WHEN a valid resource creation request is received,  
 the system SHALL:
@@ -102,7 +94,7 @@ the system SHALL:
 
 ### Response
 
-**R-HR-CR-10**
+**R-HR-CR-09**
 
 WHEN the resource is created successfully,  
 the system SHALL return a 201 status with the created resource wrapped in a `hrUsage` object including:
@@ -113,12 +105,12 @@ the system SHALL return a 201 status with the created resource wrapped in a `hrU
 
 ### Errors
 
-**R-HR-CR-11**
+**R-HR-CR-10**
 
 IF the request contains validation errors,  
 THEN the system SHALL return a 400 status with a `message` field containing validation error strings.
 
-**R-HR-CR-12**
+**R-HR-CR-11**
 
 IF an unexpected error occurs,  
 THEN the system SHALL return an internal server error response.
@@ -143,14 +135,11 @@ Partially updates editable fields of an existing human resource usage record. Ch
 
 | Field                 | Type              | Description                           |
 | --------------------- | ----------------- | ------------------------------------- |
-| plannedHours          | number (> 0)      | Updated planned hours.                |
 | actualHours           | number (> 0)      | Updated actual hours. Must be > 0.    |
 | hourlyCost            | number            | Updated hourly cost.                  |
 | principalFlag         | string ("Y"\|"N") | Updated principal flag.               |
 | actualStartDate       | string (ISO 8601) | Updated actual start date.            |
 | actualCompletionDate  | string (ISO 8601) | Updated actual completion date.       |
-| plannedStartDate      | Date              | Updated planned start date.           |
-| plannedCompletionDate | Date              | Updated planned completion date.      |
 
 ### Validations
 
@@ -174,14 +163,9 @@ THEN the system SHALL reject the request with a 400 status.
 IF both `actualStartDate` and `actualCompletionDate` are provided (or one is provided alongside the existing value) and `actualStartDate >= actualCompletionDate`,  
 THEN the system SHALL reject the request with a 400 status.
 
-**R-HR-UP-05**
-
-IF `plannedHours` is provided and is `<= 0`,  
-THEN the system SHALL reject the request with a 400 status.
-
 ### Processing
 
-**R-HR-UP-06**
+**R-HR-UP-05**
 
 WHEN a valid update request is received,  
 the system SHALL:
@@ -204,19 +188,19 @@ the system SHALL:
 
 ### Response
 
-**R-HR-UP-07**
+**R-HR-UP-06**
 
 WHEN the update is successful,  
 the system SHALL return a 200 status with the updated resource wrapped in a `hrUsage` object including the parent operation and Work Order with recalculated values.
 
 ### Errors
 
-**R-HR-UP-08**
+**R-HR-UP-07**
 
 IF the request contains validation errors,  
 THEN the system SHALL return a 400 status.
 
-**R-HR-UP-09**
+**R-HR-UP-08**
 
 IF an unexpected error occurs,  
 THEN the system SHALL return an internal server error response.

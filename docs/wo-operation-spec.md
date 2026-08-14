@@ -24,19 +24,19 @@ Creates a new operation within an existing Work Order. Each operation MUST conta
 | operationSeqNumber   | integer (> 0)           | Sequence number for ordering. Must be unique within the Work Order.                          |
 | operationType        | string                  | One of: "Internal", "Supplier".                                                              |
 | operationStatus      | string                  | One of: "UNRELEASED", "RELEASED", "IN_PROCESS", "COMPLETED", "NOT_DONE", "CANCELED", "ON_HOLD". |
-| actualStartDate      | string (ISO 8601)       | Operation start date. Must be before actualCompletionDate.                                   |
-| actualCompletionDate | string (ISO 8601)       | Operation completion date. Must be after actualStartDate.                                    |
 | resources            | array (non-empty)       | Array of human resource usage objects (at least one required).                               |
 
 #### Optional Fields
 
-| Field                | Type   | Description                   |
-| -------------------- | ------ | ----------------------------- |
-| unit                 | string | Unit of measure.              |
-| subunit              | string | Subunit of measure.           |
-| maintainableItem     | string | Maintainable item identifier. |
-| operationCategory    | string | Operation category.           |
-| materials            | array  | Array of material objects.    |
+| Field                | Type              | Description                                                                                 |
+| -------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
+| unit                 | string            | Unit of measure.                                                                            |
+| subunit              | string            | Subunit of measure.                                                                         |
+| maintainableItem     | string            | Maintainable item identifier.                                                               |
+| operationCategory    | string            | Operation category.                                                                         |
+| materials            | array             | Array of material objects.                                                                  |
+| actualStartDate      | string (ISO 8601) | Operation start date. Validated if provided; the stored value is derived from resources.    |
+| actualCompletionDate | string (ISO 8601) | Operation completion date. Validated if provided; the stored value is derived from resources. |
 
 #### Resource Object Structure (within operation creation)
 
@@ -46,19 +46,16 @@ Each resource in the `resources` array must contain:
 | ---------------------- | ----------------- | ------------------------------------------------------------ |
 | resourceCode           | string            | Resource identifier.                                         |
 | resourceSequenceNumber | integer (>= 0)    | Sequence number for Oracle integration (does not affect calculations). |
-| plannedHours           | number (> 0)      | Planned hours for the resource.                              |
 | actualHours            | number (> 0)      | Actual hours for the resource. Must be greater than 0.       |
 | principalFlag          | string ("Y"\|"N") | Principal flag indicator.                                    |
+| actualStartDate        | string (ISO 8601) | Actual start date for the resource. Must be before actualCompletionDate. |
+| actualCompletionDate   | string (ISO 8601) | Actual completion date for the resource. Must be after actualStartDate. |
 
 ##### Optional Fields (Resource Level)
 
 | Field                 | Type   | Description                           |
 | --------------------- | ------ | ------------------------------------- |
 | hourlyCost            | number | Hourly cost of the resource.          |
-| actualStartDate       | Date   | Actual start date for the resource.   |
-| actualCompletionDate  | Date   | Actual completion date for resource.  |
-| plannedStartDate      | Date   | Planned start date for the resource.  |
-| plannedCompletionDate | Date   | Planned completion date for resource. |
 
 ### Validations
 
@@ -106,42 +103,37 @@ THEN the system SHALL reject the request with a 400 status.
 
 **R-OP-CR-07**
 
-IF a resource's `plannedHours` is not greater than 0,  
+IF a resource's `actualStartDate` is not before its `actualCompletionDate`,  
 THEN the system SHALL reject the request with a 400 status.
 
 **R-OP-CR-08**
 
-IF a resource's `actualStartDate` is not before its `actualCompletionDate`,  
+IF `operationName` is less than 2 characters or exceeds 120 characters,  
 THEN the system SHALL reject the request with a 400 status.
 
 **R-OP-CR-09**
 
-IF `operationName` is less than 2 characters or exceeds 120 characters,  
+IF `operationDescription` exceeds 240 characters,  
 THEN the system SHALL reject the request with a 400 status.
 
 **R-OP-CR-10**
 
-IF `operationDescription` exceeds 240 characters,  
+IF `operationType` is not "Internal" or "Supplier",  
 THEN the system SHALL reject the request with a 400 status.
 
 **R-OP-CR-11**
 
-IF `operationType` is not "Internal" or "Supplier",  
-THEN the system SHALL reject the request with a 400 status.
-
-**R-OP-CR-12**
-
 IF `operationStatus` is not a valid UPPER_SNAKE_CASE status,  
 THEN the system SHALL reject the request with a 400 status.
 
-**R-OP-CR-13**
+**R-OP-CR-12**
 
 IF `resourceSequenceNumber` is not a non-negative integer,  
 THEN the system SHALL reject the request with a 400 status.
 
 ### Processing
 
-**R-OP-CR-14**
+**R-OP-CR-13**
 
 WHEN a valid operation creation request is received,  
 the system SHALL:
@@ -165,7 +157,7 @@ the system SHALL:
 
 ### Response
 
-**R-OP-CR-15**
+**R-OP-CR-14**
 
 WHEN the operation is created successfully,  
 the system SHALL return a 201 status with the created operation wrapped in an `operation` object including:
@@ -177,12 +169,12 @@ the system SHALL return a 201 status with the created operation wrapped in an `o
 
 ### Errors
 
-**R-OP-CR-16**
+**R-OP-CR-15**
 
 IF the request contains validation errors,  
 THEN the system SHALL return a 400 status with a `message` field containing an array of validation error strings.
 
-**R-OP-CR-17**
+**R-OP-CR-16**
 
 IF an unexpected error occurs,  
 THEN the system SHALL return an internal server error response.
@@ -210,6 +202,7 @@ Partially updates editable fields of an existing operation. Does NOT allow manua
 | operationName        | string (min 2, max 120) | Updated operation name.       |
 | operationDescription | string (max 240 chars)  | Updated description.          |
 | operationType        | string                  | Updated type ("Internal", "Supplier"). |
+| operationStatus      | string                  | Updated status. Must be compatible with the parent Work Order's `woStatusCode`. |
 
 #### Non-Editable Fields
 
@@ -241,9 +234,14 @@ THEN the system SHALL reject the request with a 400 status.
 IF any field in the payload is a calculated field (`actualHours`, `actualStartDate`, `actualCompletionDate`),  
 THEN the system SHALL reject the request with a 400 status.
 
+**R-OP-UP-05**
+
+IF `operationStatus` is provided and is not compatible with the parent Work Order's `woStatusCode`,  
+THEN the system SHALL reject the request with a 400 status.
+
 ### Processing
 
-**R-OP-UP-05**
+**R-OP-UP-06**
 
 WHEN a valid update request is received,  
 the system SHALL:
@@ -256,19 +254,19 @@ the system SHALL:
 
 ### Response
 
-**R-OP-UP-06**
+**R-OP-UP-07**
 
 WHEN the update is successful,  
 the system SHALL return a 200 status with the updated operation wrapped in an `operation` object.
 
 ### Errors
 
-**R-OP-UP-07**
+**R-OP-UP-08**
 
 IF the request contains validation errors,  
 THEN the system SHALL return a 400 status.
 
-**R-OP-UP-08**
+**R-OP-UP-09**
 
 IF an unexpected error occurs,  
 THEN the system SHALL return an internal server error response.
@@ -411,9 +409,6 @@ Returns the updated operation with review fields set.
 | organizationName      | string   | Organization name.                                         |
 | oclWorkOrderId        | BigInt   | Oracle Cloud work order ID.                                |
 | oclWorkOrderNumber    | string   | Oracle Cloud work order number.                            |
-| plannedStartDate      | DateTime | Planned start date.                                        |
-| plannedCompletionDate | DateTime | Planned completion date.                                   |
-| plannedHours          | Float    | Planned hours.                                             |
 | reviewedBy            | string   | Reviewed by user.                                          |
 | reviewedByName        | string   | Reviewed by user name.                                     |
 | reviewedAt            | DateTime | Review timestamp.                                          |
