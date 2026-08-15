@@ -7,7 +7,11 @@ import {
   CancelWoOperationDto,
   FindAllWoOperationDto,
 } from "./dto";
-import { OP_STATUS, isOperationStatusCompatible, isValidOpTransition } from "src/common/enums";
+import {
+  OP_STATUS,
+  isOperationStatusCompatible,
+  isValidOpTransition,
+} from "src/common/enums";
 
 const VALID_OP_STATUSES = Object.values(OP_STATUS);
 
@@ -161,7 +165,9 @@ export class WoOperationsService {
             message: `Resource "${res.resourceCode}" has invalid ISO 8601 date fields`,
           });
         }
-        if (new Date(res.actualStartDate!) >= new Date(res.actualCompletionDate!)) {
+        if (
+          new Date(res.actualStartDate!) >= new Date(res.actualCompletionDate!)
+        ) {
           throw new RpcException({
             status: 400,
             message: `Resource "${res.resourceCode}" actualStartDate must be before actualCompletionDate`,
@@ -210,7 +216,10 @@ export class WoOperationsService {
         if (!calculatedStartDate || resStart < calculatedStartDate) {
           calculatedStartDate = resStart;
         }
-        if (!calculatedCompletionDate || resCompletion > calculatedCompletionDate) {
+        if (
+          !calculatedCompletionDate ||
+          resCompletion > calculatedCompletionDate
+        ) {
           calculatedCompletionDate = resCompletion;
         }
       }
@@ -330,7 +339,6 @@ export class WoOperationsService {
 
       return { operation };
     } catch (error) {
-      console.error(error);
       if (error instanceof RpcException) throw error;
       throw new RpcException({ status: 500, message: "Internal server error" });
     }
@@ -402,7 +410,13 @@ export class WoOperationsService {
           where: { workOrderCode: existing.workOrderCode },
         });
 
-        if (workOrder && !isOperationStatusCompatible(workOrder.woStatusCode, dto.operationStatus)) {
+        if (
+          workOrder &&
+          !isOperationStatusCompatible(
+            workOrder.woStatusCode,
+            dto.operationStatus,
+          )
+        ) {
           throw new RpcException({
             status: 400,
             message: `Operation status ${dto.operationStatus} is not compatible with work order status ${workOrder.woStatusCode}`,
@@ -410,7 +424,11 @@ export class WoOperationsService {
         }
       }
 
-      const calculatedFields = ["actualHours", "actualStartDate", "actualCompletionDate"];
+      const calculatedFields = [
+        "actualHours",
+        "actualStartDate",
+        "actualCompletionDate",
+      ];
       for (const field of calculatedFields) {
         if ((dto as any)[field] !== undefined) {
           throw new RpcException({
@@ -579,7 +597,10 @@ export class WoOperationsService {
             }
           }
           if (op.actualCompletionDate) {
-            if (!woActualCompletionDate || op.actualCompletionDate > woActualCompletionDate) {
+            if (
+              !woActualCompletionDate ||
+              op.actualCompletionDate > woActualCompletionDate
+            ) {
               woActualCompletionDate = op.actualCompletionDate;
             }
           }
