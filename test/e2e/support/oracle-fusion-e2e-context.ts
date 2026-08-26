@@ -11,10 +11,10 @@ import { connect, NatsConnection, StringCodec } from "nats";
 import { AppModule } from "src/app.module";
 import { envs } from "src/config";
 import { PrismaService } from "src/prisma.service";
-import { OrganizationContextBuilder } from "../factories/build/OrganizationContextBuilder";
-import { mockOrganizations } from "../data/organizations.mock";
-import { mockUsers } from "../data/users.mock";
-import { mockHumanResources } from "../data/hr.mock";
+import { OracleOrganizationContextBuilder } from "../factories/build/OracleOrganizationContextBuilder";
+import { mockOrganizations } from "../data-private-mocks/organizations.mock";
+import { mockUsers } from "../data-private-mocks/users.mock";
+import { mockHumanResources } from "../data-private-mocks/hr.mock";
 
 (BigInt.prototype as any).toJSON = function toJSON() {
   return this.toString();
@@ -25,7 +25,7 @@ export type OracleFusionE2eContext = {
   client: ClientProxy;
   natsConnection: NatsConnection;
   prisma: PrismaService;
-  contextBuilder: OrganizationContextBuilder;
+  contextBuilder: OracleOrganizationContextBuilder;
   organizationCode: string;
   organizationName: string;
   actor: {
@@ -43,7 +43,7 @@ export async function setupOracleFusionE2eContext(): Promise<OracleFusionE2eCont
   }).compile();
 
   const prisma = moduleFixture.get(PrismaService);
-  const contextBuilder = new OrganizationContextBuilder(prisma);
+  const contextBuilder = new OracleOrganizationContextBuilder(prisma);
 
   await contextBuilder.teardown();
   await contextBuilder.setup();

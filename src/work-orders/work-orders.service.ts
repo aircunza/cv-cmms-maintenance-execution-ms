@@ -94,8 +94,6 @@ export class WorkOrdersService {
   ) {}
 
   async create(dto: CreateWorkOrderMessageDto) {
-    console.dir(dto, { depth: null });
-
     try {
       if (
         !isValidTypeSubtypeCombination(dto.workOrderType, dto.workOrderSubType)
