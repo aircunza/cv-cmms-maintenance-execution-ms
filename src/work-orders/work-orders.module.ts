@@ -3,8 +3,10 @@ import { WorkOrdersController } from './work-orders.controller';
 import { WorkOrdersService } from './work-orders.service';
 import { PrismaService } from 'src/prisma.service';
 import { WorkOrderSubTypePolicy, OracleWorkOrderPolicy } from './policies';
+import { NatsModule } from 'src/transports/nats.module';
 
 @Module({
+  imports: [NatsModule],
   controllers: [WorkOrdersController],
   providers: [WorkOrdersService, PrismaService, WorkOrderSubTypePolicy, OracleWorkOrderPolicy],
   exports: [WorkOrdersService],

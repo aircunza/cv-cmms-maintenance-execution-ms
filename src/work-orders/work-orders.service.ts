@@ -1,7 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { RpcException } from "@nestjs/microservices";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { ClientProxy, RpcException } from "@nestjs/microservices";
 import type { Prisma } from "generated/prisma/client";
 import { PrismaService } from "src/prisma.service";
+import { NATS_SERVICE } from "src/config/services";
+import { OracleWorkOrderMapper } from "src/common/oracle";
 import {
   CreateWorkOrderMessageDto,
   UpdateWorkOrderDto,
@@ -88,9 +90,12 @@ export class WorkOrdersService {
     private readonly prisma: PrismaService,
     private readonly subtypePolicy: WorkOrderSubTypePolicy,
     private readonly oraclePolicy: OracleWorkOrderPolicy,
+    @Inject(NATS_SERVICE) private readonly natsClient: ClientProxy,
   ) {}
 
   async create(dto: CreateWorkOrderMessageDto) {
+    console.dir(dto, { depth: null });
+
     try {
       if (
         !isValidTypeSubtypeCombination(dto.workOrderType, dto.workOrderSubType)
@@ -150,7 +155,6 @@ export class WorkOrdersService {
           message: "Asset not found or inactive",
         });
       }
-
       if (asset.organizationCode !== dto.organizationCode) {
         throw new RpcException({
           status: 403,
@@ -297,7 +301,10 @@ export class WorkOrdersService {
               message: `Operation "${op.operationName}" resource "${res.resourceCode}" must have actualStartDate and actualCompletionDate`,
             });
           }
-          if (!isValidIsoDate(res.actualStartDate) || !isValidIsoDate(res.actualCompletionDate)) {
+          if (
+            !isValidIsoDate(res.actualStartDate) ||
+            !isValidIsoDate(res.actualCompletionDate)
+          ) {
             throw new RpcException({
               status: 400,
               message: `Operation "${op.operationName}" resource "${res.resourceCode}" has invalid ISO 8601 date fields`,
@@ -349,7 +356,10 @@ export class WorkOrdersService {
           if (!opActualStartDate || resStart < opActualStartDate) {
             opActualStartDate = resStart;
           }
-          if (!opActualCompletionDate || resCompletion > opActualCompletionDate) {
+          if (
+            !opActualCompletionDate ||
+            resCompletion > opActualCompletionDate
+          ) {
             opActualCompletionDate = resCompletion;
           }
         }
@@ -385,7 +395,10 @@ export class WorkOrdersService {
         if (!woActualStartDate || (opStart && opStart < woActualStartDate)) {
           woActualStartDate = opStart;
         }
-        if (!woActualCompletionDate || (opCompletion && opCompletion > woActualCompletionDate)) {
+        if (
+          !woActualCompletionDate ||
+          (opCompletion && opCompletion > woActualCompletionDate)
+        ) {
           woActualCompletionDate = opCompletion;
         }
       }
@@ -516,6 +529,21 @@ export class WorkOrdersService {
 
       const response = this.mapToResponse(fullWorkOrder!);
 
+      if (dto.enableOracleWorkOrder === "Y") {
+        const oraclePayload =
+          OracleWorkOrderMapper.toOraclePayload(fullWorkOrder);
+        const event = {
+          enableOracleWorkOrder: "Y",
+          workOrderCode: Number(fullWorkOrder.workOrderCode),
+          payload: oraclePayload,
+        };
+
+        this.natsClient.emit("work.order.created", event).subscribe({
+          error: (err: unknown) =>
+            this.logger.error("Failed to emit work.order.created", err),
+        });
+      }
+
       return { workOrder: response };
     } catch (error) {
       if (error instanceof RpcException) throw error;
@@ -524,9 +552,11 @@ export class WorkOrdersService {
   }
 
   private mapToResponse(wo: any, includeCanceled = false) {
-    const operations = wo.woOperations?.filter((op: any) =>
-      includeCanceled || op.operationStatus !== OP_STATUS.CANCELED
-    ) || [];
+    const operations =
+      wo.woOperations?.filter(
+        (op: any) =>
+          includeCanceled || op.operationStatus !== OP_STATUS.CANCELED,
+      ) || [];
 
     return {
       workOrderCode: wo.workOrderCode.toString(),
@@ -567,9 +597,10 @@ export class WorkOrdersService {
       canceledDate: wo.canceledDate,
       canceledReason: wo.canceledReason,
       operations: operations.map((op: any) => {
-        const hrUsages = op.hrUsages?.filter((hr: any) =>
-          includeCanceled || hr.status !== "CANCELED"
-        ) || [];
+        const hrUsages =
+          op.hrUsages?.filter(
+            (hr: any) => includeCanceled || hr.status !== "CANCELED",
+          ) || [];
 
         return {
           operationCode: op.operationCode.toString(),
@@ -1523,7 +1554,8 @@ export class WorkOrdersService {
       if (!dto.newActualStartDate || !isValidIsoDate(dto.newActualStartDate)) {
         throw new RpcException({
           status: 400,
-          message: "newActualStartDate is required and must be a valid ISO 8601 datetime",
+          message:
+            "newActualStartDate is required and must be a valid ISO 8601 datetime",
         });
       }
 
@@ -1624,7 +1656,10 @@ export class WorkOrdersService {
           const opCompletion = op.actualCompletionDate
             ? new Date(op.actualCompletionDate.getTime() + deltaMs)
             : null;
-          if (opCompletion && (!newWoCompletionDate || opCompletion > newWoCompletionDate)) {
+          if (
+            opCompletion &&
+            (!newWoCompletionDate || opCompletion > newWoCompletionDate)
+          ) {
             newWoCompletionDate = opCompletion;
           }
         }
