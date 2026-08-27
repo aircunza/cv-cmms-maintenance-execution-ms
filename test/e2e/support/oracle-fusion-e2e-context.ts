@@ -15,6 +15,7 @@ import { OracleOrganizationContextBuilder } from "../factories/build/OracleOrgan
 import { mockOrganizations } from "../data-private-mocks/organizations.mock";
 import { mockUsers } from "../data-private-mocks/users.mock";
 import { mockHumanResources } from "../data-private-mocks/hr.mock";
+import { mockAssets } from "../data-private-mocks/mnt.assets.mock";
 
 (BigInt.prototype as any).toJSON = function toJSON() {
   return this.toString();
@@ -152,7 +153,7 @@ export function defaultWoPayload(
     enableOracleWorkOrder: "Y",
     workOrderDescription: "E2E Oracle Fusion Test",
     woStatusCode: "UNRELEASED",
-    assetCode: "AST-001",
+    assetCode: mockAssets[0].assetCode,
     workOrderType: "Planned",
     workOrderSubType: "Preventive",
     workOrderPriority: "2",

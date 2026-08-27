@@ -1,3 +1,4 @@
+import { mockAssets } from "./data-private-mocks/mnt.assets.mock";
 import {
   createWorkOrder,
   setupOracleFusionE2eContext,
@@ -46,7 +47,7 @@ describe("WO Oracle Fusion Event (e2e, NATS)", () => {
 
     expect(payload.OrganizationCode).toBe(context.organizationCode);
     expect(payload.WorkOrderDescription).toBe("E2E Oracle Fusion Test");
-    expect(payload.AssetNumber).toBe("AST-001");
+    expect(payload.AssetNumber).toBe(mockAssets[0].assetCode);
     expect(payload.WorkOrderTypeCode).toBe("PREVENTIVE");
     expect(payload.WorkOrderSubTypeCode).toBe("ORA_PLANNED");
     expect(payload.WorkOrderPriority).toBe("2");
@@ -85,7 +86,7 @@ describe("WO Oracle Fusion Event (e2e, NATS)", () => {
     expect(dbWo).not.toBeNull();
     expect(dbWo!.enableOracleWorkOrder).toBe("Y");
     expect(dbWo!.workOrderDescription).toBe("E2E Oracle Fusion Test");
-    expect(dbWo!.assetCode).toBe("AST-001");
+    expect(dbWo!.assetCode).toBe(mockAssets[0].assetCode);
     expect(dbWo!.woStatusCode).toBe("UNRELEASED");
   });
 });
