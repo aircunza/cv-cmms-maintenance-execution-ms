@@ -16,6 +16,7 @@ import { mockOrganizations } from "../data-private-mocks/organizations.mock";
 import { mockUsers } from "../data-private-mocks/users.mock";
 import { mockHumanResources } from "../data-private-mocks/hr.mock";
 import { mockAssets } from "../data-private-mocks/mnt.assets.mock";
+import { mockOracleMntMaterials } from "../data-private-mocks/mnt.materials.mock";
 
 (BigInt.prototype as any).toJSON = function toJSON() {
   return this.toString();
