@@ -532,7 +532,7 @@ export class WorkOrdersService {
           OracleWorkOrderMapper.toOraclePayload(fullWorkOrder);
         const event = {
           enableOracleWorkOrder: "Y",
-          workOrderCode: Number(fullWorkOrder.workOrderCode),
+          workOrderCode: Number(fullWorkOrder!.workOrderCode),
           payload: oraclePayload,
         };
 
