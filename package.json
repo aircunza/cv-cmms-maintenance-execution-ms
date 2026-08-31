@@ -46,7 +46,8 @@
     "test:e2e:ophr:cancel": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/operation.hr.cancel.test.ts",
     "test:e2e:ophr": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit --runInBand --config ./test/jest-e2e.json --runTestsByPath ./test/e2e/operation.hr.post.test.ts ./test/e2e/operation.hr.get.test.ts ./test/e2e/operation.hr.put.test.ts ./test/e2e/operation.hr.cancel.test.ts",
     "test:e2e:ophrs": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit --runInBand --config ./test/jest-e2e.json --runTestsByPath ./test/e2e/wo.operation.post.test.ts ./test/e2e/wo.operation.get.test.ts ./test/e2e/wo.operation.put.test.ts ./test/e2e/wo.operation.review.test.ts ./test/e2e/wo.operation.cancel.test.ts ./test/e2e/operation.hr.post.test.ts ./test/e2e/operation.hr.get.test.ts ./test/e2e/operation.hr.put.test.ts ./test/e2e/operation.hr.cancel.test.ts",
-    "test:e2e:wo:oracle:post": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work.order.oracle-emitted.test.ts"
+    "test:e2e:wo:oracle:post": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work.order.oracle-emitted.test.ts",
+    "test:e2e:wr:oracle:post": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work.request.oracle-emitted.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "11.1.28",

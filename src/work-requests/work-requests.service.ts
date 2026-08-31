@@ -396,7 +396,7 @@ export class WorkRequestsService {
       workOrderOperationResource: [
         {
           resourceCode: "DEFAULT_RESOURCE",
-          resourceSequenceNumber: 0,
+          resourceSequenceNumber: 1,
           actualHours: 1,
           principalFlag: "N",
           actualStartDate: now.toISOString(),
