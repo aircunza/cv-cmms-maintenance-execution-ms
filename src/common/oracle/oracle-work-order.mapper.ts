@@ -72,6 +72,8 @@ export class OracleWorkOrderMapper {
       : [];
     const lastIndex = Math.max(0, ops.length - 1);
 
+    const operationCodes = ops.map((op: any) => Number(op.operationCode));
+
     const mappedOperations = ops.map((op: any, idx: number) => {
       const isCountPoint = idx === lastIndex;
       const opTypeKey = op.operationType as WorkOrderOperationTypeKey;
@@ -137,6 +139,7 @@ export class OracleWorkOrderMapper {
         OracleEquivalences.WorkOrderStatusCode[statusKey],
       PlannedStartDate: formatDateForOracle(fullWorkOrder.actualStartDate),
       WorkOrderOperation: mappedOperations,
+      _operationCodes: operationCodes,
     };
   }
 }

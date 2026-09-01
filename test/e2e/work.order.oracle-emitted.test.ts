@@ -57,6 +57,10 @@ describe("WO Oracle Fusion Event (e2e, NATS)", () => {
     expect(typeof payload.PlannedStartDate).toBe("string");
     expect(payload.PlannedStartDate).toContain("+00:00");
 
+    expect(Array.isArray(event.operationCodes)).toBe(true);
+    expect(event.operationCodes.length).toBe(1);
+    expect(typeof event.operationCodes[0]).toBe("number");
+
     expect(Array.isArray(payload.WorkOrderOperation)).toBe(true);
     expect(payload.WorkOrderOperation.length).toBe(1);
 
@@ -212,6 +216,11 @@ describe("WO Oracle Fusion Event (e2e, NATS)", () => {
     expect(payload.WorkOrderTypeCode).toBe("PREVENTIVE");
     expect(payload.WorkOrderSubTypeCode).toBe("ORA_PLANNED");
     expect(payload.WorkOrderStatusCode).toBe("ORA_UNRELEASED");
+
+    expect(Array.isArray(event.operationCodes)).toBe(true);
+    expect(event.operationCodes.length).toBe(2);
+    expect(typeof event.operationCodes[0]).toBe("number");
+    expect(typeof event.operationCodes[1]).toBe("number");
 
     expect(Array.isArray(payload.WorkOrderOperation)).toBe(true);
     expect(payload.WorkOrderOperation.length).toBe(2);

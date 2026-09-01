@@ -530,10 +530,12 @@ export class WorkOrdersService {
       if (dto.enableOracleWorkOrder === "Y") {
         const oraclePayload =
           OracleWorkOrderMapper.toOraclePayload(fullWorkOrder);
+        const { _operationCodes, ...payloadForOracle } = oraclePayload;
         const event = {
           enableOracleWorkOrder: "Y",
           workOrderCode: Number(fullWorkOrder!.workOrderCode),
-          payload: oraclePayload,
+          payload: payloadForOracle,
+          operationCodes: _operationCodes,
         };
 
         this.natsClient.emit("work.order.created", event).subscribe({
