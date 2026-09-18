@@ -46,6 +46,7 @@ model MntAsset {
   isActive                       String    @default("Y") @map("is_active") @db.Char(1)
 
   workRequests MntWorkRequest[]
+  assetsTree   MntAssetsTree[]
 
   @@unique([assetCode, workCenterId], map: "uq_mnt_assets_code")
   @@index([organizationCode], map: "idx_mnt_assets_org_code")
@@ -271,4 +272,27 @@ model MntOperationHumanResourceUsage {
   @@index([operationCode], map: "idx_op_hr_operation_code")
   @@index([resourceCode], map: "idx_op_hr_resource_code")
   @@map("mnt_operation_human_resource_usages")
+}
+
+model MntAssetsTree {
+  id               BigInt    @id @default(autoincrement())
+  assetCode        String    @map("asset_code") @db.NVarChar(80)
+  unit             String    @db.NVarChar(370)
+  subunit          String    @db.NVarChar(370)
+  maintainableItem String    @map("maintainable_item") @db.NVarChar(370)
+  sparePartCode    String    @map("spare_part_code") @db.NVarChar(255)
+  sparePartName    String    @map("spare_part_name") @db.NVarChar(255)
+  createdBy        String?   @map("created_by") @db.UniqueIdentifier
+  createdByName    String?   @map("created_by_name") @db.NVarChar(70)
+  updatedBy        String?   @map("updated_by") @db.UniqueIdentifier
+  updatedByName    String?   @map("updated_by_name") @db.NVarChar(70)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTimeOffset
+  updatedAt        DateTime? @map("updated_at") @db.DateTimeOffset
+  isActive         String    @default("Y") @map("is_active") @db.Char(1)
+
+  asset MntAsset @relation(fields: [assetCode], references: [assetCode], onDelete: NoAction)
+
+  @@unique([assetCode, unit, subunit, maintainableItem, sparePartCode], map: "uq_assets_tree_combination")
+  @@index([assetCode], map: "idx_assets_tree_asset_code")
+  @@map("mnt_assets_tree")
 }

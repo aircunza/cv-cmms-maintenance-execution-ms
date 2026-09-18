@@ -2,6 +2,7 @@ import { PrismaService } from "src/prisma.service";
 import { mockAssets } from "../../data/mnt.assets.mock";
 import { mockOrganizations } from "../../data/organizations.mock";
 import { mockHumanResources } from "../../data/hr.mock";
+import { mockAssetsTree } from "../../data/assets-tree.mock";
 
 export class OrganizationContextBuilder {
   constructor(private readonly prisma: PrismaService) {}
@@ -54,6 +55,10 @@ export class OrganizationContextBuilder {
         update: hr,
       });
     }
+
+    for (const tree of mockAssetsTree) {
+      await this.prisma.mntAssetsTree.create({ data: tree });
+    }
   }
 
   async teardown(): Promise<void> {
@@ -64,6 +69,10 @@ export class OrganizationContextBuilder {
 
     // Delete from child tables to parent tables to respect FK constraints.
     await this.prisma.$transaction(async (tx) => {
+      await tx.mntAssetsTree.deleteMany({
+        where: { assetCode: { in: assetCodes } },
+      });
+
       await tx.mntOperationMaterialUsage.deleteMany({
         where: { organizationCode: { in: organizationCodes } },
       });

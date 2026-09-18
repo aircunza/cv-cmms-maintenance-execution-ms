@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
 import { AssetsModule } from "./assets/assets.module";
+import { AssetsTreeModule } from "./assets-tree/assets-tree.module";
 import { WorkRequestsModule } from "./work-requests/work-requests.module";
 import { WorkOrdersModule } from "./work-orders/work-orders.module";
 import { WoOperationsModule } from "./wo-operations/wo-operations.module";
@@ -12,6 +13,7 @@ import { MicroserviceRpcErrorCaptureLayer } from "./common/microservice-error-la
 @Module({
   imports: [
     AssetsModule,
+    AssetsTreeModule,
     WorkRequestsModule,
     WorkOrdersModule,
     WoOperationsModule,
