@@ -109,6 +109,8 @@ export class OrganizationContextBuilder {
     issueDescription: string;
     statusCode: string;
     organizationCode: string;
+    operatorCode: string;
+    operatorName: string;
     createdBy: string;
     createdByName: string;
   }): Promise<void> {

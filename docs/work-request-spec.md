@@ -65,6 +65,8 @@ When `enableOracleWorkOrder = "Y"` and the system-level `ENABLE_ORACLE_WORK_ORDE
 | assetCode             | string            | 80         | Asset identifier.                  |
 | issueDescription      | string            | 240        | Description of the reported issue. |
 | enableOracleWorkOrder | string ("Y"\|"N") | 1          | Flag to enable Oracle integration. |
+| operatorCode          | string            | 255        | Operator code.                     |
+| operatorName          | string            | 255        | Operator name.                     |
 
 #### Optional Fields
 
@@ -122,6 +124,8 @@ When a Work Request is created, the system automatically creates an associated W
   "assetCode": "AST-001",
   "issueDescription": "Oil leak detected on the hydraulic pump.",
   "enableOracleWorkOrder": "N",
+  "operatorCode": "OP-001",
+  "operatorName": "John Operator",
   "organizationCode": "ORG-BOG-001",
   "userPermissions": ["mnt.work.request.create", "mnt.work.orders.create"],
   "userRoles": ["MANUFACTURING_FACILITATOR"],

@@ -152,6 +152,46 @@ describe("WO Request GET (e2e, NATS)", () => {
     expect(response.total).toBe(3);
   });
 
+  it("filters using eq operator on operatorCode", async () => {
+    const response = await sendPattern(
+      context.client,
+      "work.request.find.all",
+      {
+        organizationCode: context.organizationCode,
+        userRoles: context.userRoles,
+        filters: [{ field: "operatorCode", operator: "eq", value: "OP-001" }],
+      },
+    );
+
+    expect(response.total).toBeGreaterThanOrEqual(3);
+    expect(
+      response.workRequests.every(
+        (item: any) => item.operatorCode === "OP-001",
+      ),
+    ).toBe(true);
+  });
+
+  it("filters using like operator on operatorName", async () => {
+    const response = await sendPattern(
+      context.client,
+      "work.request.find.all",
+      {
+        organizationCode: context.organizationCode,
+        userRoles: context.userRoles,
+        filters: [
+          { field: "operatorName", operator: "like", value: "Operator" },
+        ],
+      },
+    );
+
+    expect(response.total).toBeGreaterThanOrEqual(3);
+    expect(
+      response.workRequests.some((item: any) =>
+        String(item.operatorName).includes("Operator"),
+      ),
+    ).toBe(true);
+  });
+
   it("returns empty result set when other organization queries", async () => {
     const response = await sendPattern(
       context.client,

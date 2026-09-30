@@ -162,6 +162,8 @@ export function defaultWorkRequestPayload(
     assetCode: "AST-001",
     issueDescription: `E2E issue ${Date.now()}-${Math.random()}`,
     enableOracleWorkOrder: "N",
+    operatorCode: "OP-001",
+    operatorName: "John Operator",
     actorId: context.actor.id,
     actorName: context.actor.username,
     organizationCode: context.organizationCode,

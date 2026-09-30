@@ -36,6 +36,8 @@ describe("WO Request POST (e2e, NATS)", () => {
       context.organizationCode,
     );
     expect(response.workRequest.statusCode).toBe("RELEASED");
+    expect(response.workRequest.operatorCode).toBe("OP-001");
+    expect(response.workRequest.operatorName).toBe("John Operator");
     expect(response.workRequest.createdBy).toBe(context.actor.id);
     expect(response.workRequest.createdByName).toBe(context.actor.username);
 
@@ -84,6 +86,42 @@ describe("WO Request POST (e2e, NATS)", () => {
     await assertRpcError(
       createWorkRequest(context, {
         enableOracleWorkOrder: "X",
+      }),
+      400,
+    );
+  });
+
+  it("rejects request when operatorCode is missing", async () => {
+    await assertRpcError(
+      createWorkRequest(context, {
+        operatorCode: undefined,
+      }),
+      400,
+    );
+  });
+
+  it("rejects request when operatorName is missing", async () => {
+    await assertRpcError(
+      createWorkRequest(context, {
+        operatorName: undefined,
+      }),
+      400,
+    );
+  });
+
+  it("rejects request when operatorCode exceeds max length", async () => {
+    await assertRpcError(
+      createWorkRequest(context, {
+        operatorCode: "O".repeat(256),
+      }),
+      400,
+    );
+  });
+
+  it("rejects request when operatorName exceeds max length", async () => {
+    await assertRpcError(
+      createWorkRequest(context, {
+        operatorName: "N".repeat(256),
       }),
       400,
     );

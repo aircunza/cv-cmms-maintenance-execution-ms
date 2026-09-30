@@ -28,6 +28,16 @@ export class CreateWorkRequestDto {
   @IsNotEmpty()
   @IsIn(["Y", "N"])
   enableOracleWorkOrder!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  operatorCode!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  operatorName!: string;
 }
 
 export class CreateWorkRequestMessageDto extends CreateWorkRequestDto {

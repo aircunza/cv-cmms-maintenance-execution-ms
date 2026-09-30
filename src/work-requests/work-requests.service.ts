@@ -28,6 +28,8 @@ const FIND_ALL_FILTER_FIELDS = new Set([
   "statusCode",
   "organizationCode",
   "workAreaCode",
+  "operatorCode",
+  "operatorName",
   "createdAt",
   "requestedAt",
   "releasedAt",
@@ -41,6 +43,8 @@ const STRING_FIELDS = new Set([
   "statusCode",
   "organizationCode",
   "workAreaCode",
+  "operatorCode",
+  "operatorName",
 ]);
 
 const BIGINT_FIELDS = new Set(["requestId"]);
@@ -122,6 +126,8 @@ export class WorkRequestsService {
           subsector: asset.subsector,
           organizationCode: asset.organizationCode,
           organizationName: asset.organizationName,
+          operatorCode: dto.operatorCode,
+          operatorName: dto.operatorName,
           createdBy: dto.actorId,
           createdByName: dto.actorName,
         },
@@ -150,6 +156,7 @@ export class WorkRequestsService {
       };
     } catch (error) {
       if (error instanceof RpcException) throw error;
+      this.logger.error("Error creating work request", error);
       throw new RpcException({ status: 500, message: "Internal server error" });
     }
   }
@@ -427,6 +434,8 @@ export class WorkRequestsService {
       subsector: wr.subsector,
       organizationCode: wr.organizationCode,
       organizationName: wr.organizationName,
+      operatorCode: wr.operatorCode,
+      operatorName: wr.operatorName,
       createdBy: wr.createdBy,
       createdByName: wr.createdByName,
       updatedBy: wr.updatedBy,

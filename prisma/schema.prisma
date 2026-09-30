@@ -95,6 +95,8 @@ model MntWorkRequest {
   subsector             String?   @db.NVarChar(50)
   organizationCode      String    @map("organization_code") @db.NVarChar(255)
   organizationName      String?   @map("organization_name") @db.NVarChar(255)
+  operatorCode          String    @map("operator_code") @db.NVarChar(255)
+  operatorName          String    @map("operator_name") @db.NVarChar(255)
   createdBy             String    @map("created_by") @db.UniqueIdentifier
   createdByName         String    @map("created_by_name") @db.NVarChar(70)
   createdAt             DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
