@@ -48,10 +48,23 @@
     "test:e2e:ophrs": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit --runInBand --config ./test/jest-e2e.json --runTestsByPath ./test/e2e/wo.operation.post.test.ts ./test/e2e/wo.operation.get.test.ts ./test/e2e/wo.operation.put.test.ts ./test/e2e/wo.operation.review.test.ts ./test/e2e/wo.operation.cancel.test.ts ./test/e2e/operation.hr.post.test.ts ./test/e2e/operation.hr.get.test.ts ./test/e2e/operation.hr.put.test.ts ./test/e2e/operation.hr.cancel.test.ts",
     "test:e2e:wo:oracle:post": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work.order.oracle-emitted.test.ts",
     "test:e2e:wr:oracle:post": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work.request.oracle-emitted.test.ts",
-    "test:e2e:tree:post": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/assets-tree.post.test.ts",
+"test:e2e:tree:post": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/assets-tree.post.test.ts",
     "test:e2e:tree:patch": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/assets-tree.patch.test.ts",
-    "test:e2e:tree:get": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/assets-tree.get.test.ts"
- 
+    "test:e2e:tree:get": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/assets-tree.get.test.ts",
+    "test:e2e:tree": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit --runInBand --config ./test/jest-e2e.json --runTestsByPath ./test/e2e/assets-tree.post.test.ts ./test/e2e/assets-tree.get.test.ts ./test/e2e/assets-tree.patch.test.ts",
+    "test:e2e:asset:post": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/assets.post.test.ts",
+    "test:e2e:asset:get": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/assets.get.test.ts",
+    "test:e2e:asset:patch": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/assets.patch.test.ts",
+    "test:e2e:asset": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit --runInBand --config ./test/jest-e2e.json --runTestsByPath ./test/e2e/assets.post.test.ts ./test/e2e/assets.get.test.ts ./test/e2e/assets.patch.test.ts",
+    "test:e2e:wa:post": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work-areas.post.test.ts",
+    "test:e2e:wa:get": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work-areas.get.test.ts",
+    "test:e2e:wa:patch": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work-areas.patch.test.ts",
+    "test:e2e:wa": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit --runInBand --config ./test/jest-e2e.json --runTestsByPath ./test/e2e/work-areas.post.test.ts ./test/e2e/work-areas.get.test.ts ./test/e2e/work-areas.patch.test.ts",
+    "test:e2e:wc:post": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work-centers.post.test.ts",
+    "test:e2e:wc:get": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work-centers.get.test.ts",
+    "test:e2e:wc:patch": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work-centers.patch.test.ts",
+    "test:e2e:wc": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit --runInBand --config ./test/jest-e2e.json --runTestsByPath ./test/e2e/work-centers.post.test.ts ./test/e2e/work-centers.get.test.ts ./test/e2e/work-centers.patch.test.ts"
+  
     
   },
   "dependencies": {

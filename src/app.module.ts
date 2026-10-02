@@ -8,6 +8,8 @@ import { WoOperationsModule } from "./wo-operations/wo-operations.module";
 import { OperationMaterialsModule } from "./operation-materials/operation-materials.module";
 import { OperationHumanResourcesModule } from "./operation-human-resources/operation-human-resources.module";
 import { HumanResourcesModule } from "./human-resources/human-resources.module";
+import { WorkAreasModule } from "./work-areas/work-areas.module";
+import { WorkCentersModule } from "./work-centers/work-centers.module";
 import { MicroserviceRpcErrorCaptureLayer } from "./common/microservice-error-layer/microservice-rpc-error-capture.layer";
 
 @Module({
@@ -20,6 +22,8 @@ import { MicroserviceRpcErrorCaptureLayer } from "./common/microservice-error-la
     OperationMaterialsModule,
     OperationHumanResourcesModule,
     HumanResourcesModule,
+    WorkAreasModule,
+    WorkCentersModule,
   ],
   controllers: [],
   providers: [

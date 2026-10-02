@@ -8,6 +8,58 @@ datasource db {
   provider = "sqlserver"
 }
 
+model Organization {
+  id            String   @id @default(uuid()) @db.UniqueIdentifier
+  code          String   @unique @db.NVarChar(255)
+  name          String   @db.NVarChar(255)
+  countryCode   String   @map("country_code") @db.NVarChar(10)
+  countryName   String   @map("country_name") @db.NVarChar(100)
+  timezone      String   @db.NVarChar(100)
+  offsetMinutes Int?     @map("offset_minutes")
+  createdAt     DateTime @default(now()) @map("created_at") @db.DateTimeOffset
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.DateTimeOffset
+  isActive      String   @default("Y") @map("is_active") @db.Char(1)
+
+  workAreas WorkArea[]
+
+  @@map("organizations")
+}
+
+model WorkArea {
+  id                  String       @id @map("work_area_id") @db.UniqueIdentifier
+  workAreaCode        String       @map("work_area_code") @db.NVarChar(255)
+  workAreaDescription String?      @map("work_area_description") @db.NVarChar(255)
+  organizationCode    String       @map("organization_code") @db.NVarChar(255)
+  isActive            String       @default("Y") @map("is_active") @db.Char(1)
+  createdAt           DateTime     @default(now()) @map("created_at") @db.DateTimeOffset
+  updatedAt           DateTime?    @map("updated_at") @db.DateTimeOffset
+  workCenters         WorkCenter[]
+
+  organization Organization @relation(fields: [organizationCode], references: [code], onDelete: NoAction)
+
+  @@unique([workAreaCode, organizationCode], map: "uq_work_area_code_per_organization")
+  @@index([organizationCode], map: "idx_work_areas_organization_code")
+  @@map("work_areas")
+}
+
+model WorkCenter {
+  id                    String    @id @map("work_center_id") @db.UniqueIdentifier
+  workCenterCode        String    @map("work_center_code") @db.NVarChar(255)
+  workCenterDescription String?   @map("work_center_description") @db.NVarChar(255)
+  workAreaId            String    @map("work_area_id") @db.UniqueIdentifier
+  centerCostCode        Int       @map("center_cost_code")
+  centerCostDescription String?   @map("center_cost_description") @db.NVarChar(255)
+  isActive              String    @default("Y") @map("is_active") @db.Char(1)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.DateTimeOffset
+  updatedAt             DateTime? @map("updated_at") @db.DateTimeOffset
+
+  workArea WorkArea   @relation(fields: [workAreaId], references: [id], onDelete: NoAction)
+  assets   MntAsset[]
+
+  @@unique([centerCostCode, workAreaId], map: "uq_work_centers_center_cost_code")
+  @@map("work_centers")
+}
+
 model MntAsset {
   assetCode                      String    @id @map("asset_code") @db.NVarChar(80)
   assetDescription               String?   @map("asset_description") @db.NVarChar(240)
@@ -45,6 +97,7 @@ model MntAsset {
   subsector                      String?   @db.NVarChar(50)
   isActive                       String    @default("Y") @map("is_active") @db.Char(1)
 
+  workCenter   WorkCenter?    @relation(fields: [workCenterId], references: [id], onDelete: NoAction)
   workRequests MntWorkRequest[]
   assetsTree   MntAssetsTree[]
 
