@@ -87,6 +87,7 @@ export async function setupWorkRequestE2eContext(): Promise<WorkRequestE2eContex
       "mnt.work.request.create",
       "mnt.work.orders.create",
       "mnt.work.request.update",
+      "mnt.work.request.release",
       "mnt.work.request.complete",
       "mnt.work.request.cancel",
       "mnt.work.orders.cancel",

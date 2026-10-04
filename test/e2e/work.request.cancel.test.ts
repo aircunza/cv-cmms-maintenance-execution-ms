@@ -25,6 +25,17 @@ function cancelPayload(
   };
 }
 
+async function releaseWorkRequest(
+  context: WorkRequestE2eContext,
+  requestId: number | string,
+): Promise<any> {
+  return sendPattern(
+    context.client,
+    "work.request.release",
+    cancelPayload(context, requestId),
+  );
+}
+
 describe("WO Request Cancel (e2e, NATS)", () => {
   let context: WorkRequestE2eContext;
 
@@ -40,6 +51,7 @@ describe("WO Request Cancel (e2e, NATS)", () => {
 
   it("cancels a work request from RELEASED status", async () => {
     const wr = await createWorkRequest(context);
+    await releaseWorkRequest(context, wr.workRequest.requestId);
 
     const response = await sendPattern(
       context.client,
@@ -53,6 +65,7 @@ describe("WO Request Cancel (e2e, NATS)", () => {
 
   it("cancels the associated work order when canceling the work request", async () => {
     const wr = await createWorkRequest(context);
+    await releaseWorkRequest(context, wr.workRequest.requestId);
 
     const response = await sendPattern(
       context.client,
@@ -66,6 +79,7 @@ describe("WO Request Cancel (e2e, NATS)", () => {
 
   it("cancels a work request from COMPLETED status", async () => {
     const wr = await createWorkRequest(context);
+    await releaseWorkRequest(context, wr.workRequest.requestId);
 
     await sendPattern(
       context.client,
@@ -143,6 +157,7 @@ describe("WO Request Cancel (e2e, NATS)", () => {
 
   it("rejects when work request is already canceled", async () => {
     const wr = await createWorkRequest(context);
+    await releaseWorkRequest(context, wr.workRequest.requestId);
 
     await sendPattern(
       context.client,

@@ -25,6 +25,17 @@ function completePayload(
   };
 }
 
+async function releaseWorkRequest(
+  context: WorkRequestE2eContext,
+  requestId: number | string,
+): Promise<any> {
+  return sendPattern(
+    context.client,
+    "work.request.release",
+    completePayload(context, requestId),
+  );
+}
+
 describe("WO Request Complete (e2e, NATS)", () => {
   let context: WorkRequestE2eContext;
 
@@ -40,6 +51,7 @@ describe("WO Request Complete (e2e, NATS)", () => {
 
   it("completes a work request from RELEASED status", async () => {
     const wr = await createWorkRequest(context);
+    await releaseWorkRequest(context, wr.workRequest.requestId);
 
     const response = await sendPattern(
       context.client,
@@ -54,6 +66,7 @@ describe("WO Request Complete (e2e, NATS)", () => {
 
   it("does not modify the associated work order when completing", async () => {
     const wr = await createWorkRequest(context);
+    await releaseWorkRequest(context, wr.workRequest.requestId);
 
     const response = await sendPattern(
       context.client,
@@ -110,6 +123,7 @@ describe("WO Request Complete (e2e, NATS)", () => {
 
   it("rejects when work request is not in RELEASED status", async () => {
     const wr = await createWorkRequest(context);
+    await releaseWorkRequest(context, wr.workRequest.requestId);
 
     await sendPattern(
       context.client,

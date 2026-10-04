@@ -33,6 +33,11 @@ export class WorkRequestsController {
     return this.workRequestsService.update(dto);
   }
 
+  @MessagePattern("work.request.release")
+  release(@Payload() dto: WorkRequestIdMessageDto) {
+    return this.workRequestsService.release(dto);
+  }
+
   @MessagePattern("work.request.complete")
   complete(@Payload() dto: WorkRequestIdMessageDto) {
     return this.workRequestsService.complete(dto);

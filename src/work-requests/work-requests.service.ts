@@ -115,8 +115,8 @@ export class WorkRequestsService {
           assetShortDescription:
             dto.assetShortDescription ?? asset.assetShortDescription,
           issueDescription: dto.issueDescription,
-          statusCode: WR_STATUS.RELEASED,
-          releasedAt: new Date(),
+          statusCode: WR_STATUS.ON_HOLD,
+          requestedAt: new Date(),
           workCenterCode: asset.workCenterCode,
           workCenterDescription: asset.workCenterDescription,
           centerCostCode: asset.centerCostCode,
@@ -244,6 +244,56 @@ export class WorkRequestsService {
           updatedBy: dto.actorId,
           updatedByName: dto.actorName,
           updatedAt: now,
+        },
+        include: { workOrders: true },
+      });
+
+      return { workRequest: this.mapToResponse(updated) };
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({ status: 500, message: "Internal server error" });
+    }
+  }
+
+  async release(dto: WorkRequestIdMessageDto) {
+    try {
+      if (!dto.userPermissions.includes("mnt.work.request.release")) {
+        throw this.missingPermissionException();
+      }
+
+      if (!this.policy.canRelease(dto.userRoles)) {
+        throw this.roleNotAuthorizedException();
+      }
+
+      const existing = await this.prisma.mntWorkRequest.findFirst({
+        where: {
+          requestId: BigInt(dto.requestId),
+          organizationCode: dto.organizationCode,
+        },
+      });
+
+      if (!existing) {
+        throw new RpcException({
+          status: 404,
+          message: "Work request not found",
+        });
+      }
+
+      if (existing.statusCode !== WR_STATUS.ON_HOLD) {
+        throw new RpcException({
+          status: 400,
+          message: `Cannot release work request from status ${existing.statusCode}`,
+        });
+      }
+
+      const updated = await this.prisma.mntWorkRequest.update({
+        where: { requestId: BigInt(dto.requestId) },
+        data: {
+          statusCode: WR_STATUS.RELEASED,
+          releasedAt: new Date(),
+          updatedBy: dto.actorId,
+          updatedByName: dto.actorName,
+          updatedAt: new Date(),
         },
         include: { workOrders: true },
       });

@@ -10,6 +10,7 @@ All endpoints in this module are accessed via NATS patterns through the gateway.
 | Get Work Request By ID | `work.request.find.one` | GET /wo-request/:id            |
 | Get All Work Requests  | `work.request.find.all` | GET /wo-request                |
 | Update Description     | `work.request.update`   | PATCH /wo-request/:id          |
+| Release Work Request   | `work.request.release`  | PATCH /wo-request/:id/release  |
 | Complete Work Request  | `work.request.complete` | PATCH /wo-request/:id/complete |
 | Cancel Work Request    | `work.request.cancel`   | PATCH /wo-request/:id/cancel   |
 
@@ -90,7 +91,7 @@ These fields are generated or managed by the system and SHALL NOT be provided wh
 | updatedAt             | Date    | -      | Last update timestamp.                                 |
 | updatedBy             | string  | -      | Last updated by user.                                  |
 | updatedByName         | string  | -      | Last updated by user name.                             |
-| statusCode            | string  | 30     | Initial work request status set by system as RELEASED. |
+| statusCode            | string  | 30     | Initial work request status set by system as ON_HOLD.  |
 | workCenterCode        | string  | 255    | Work center code.                                      |
 | workCenterDescription | string  | 255    | Work center description.                               |
 | centerCostCode        | integer | -      | Cost center code.                                      |
@@ -194,7 +195,7 @@ the system SHALL:
 
 1. Validate all permissions and authorizations
 2. Find the asset and validate organization ownership
-3. Create the Work Request with `statusCode: "RELEASED"` and `releasedAt: now`
+3. Create the Work Request with `statusCode: "ON_HOLD"` and `requestedAt: now`
 4. Create an associated Work Order with:
    - `workOrderDescription` = `issueDescription` from the Work Request
    - `workOrderType` = `"Not Planned"`
@@ -389,6 +390,84 @@ Returns the updated Work Request.
 
 ---
 
+## Release Work Request
+
+### Communication
+
+NATS Pattern: `work.request.release` (via gateway)
+
+Gateway endpoint: `PATCH /wo-request/:requestId/release`
+
+### Purpose
+
+Transitions a Work Request from `ON_HOLD` to `RELEASED` status. This action sets the `releasedAt` timestamp.
+
+### Gateway-Injected Fields
+
+| Field            | Type     | Description                                                       |
+| ---------------- | -------- | ----------------------------------------------------------------- |
+| actorId          | string   | User ID from JWT payload                                          |
+| actorName        | string   | User name from JWT payload                                        |
+| organizationCode | string   | Target organization from `X-Organization-Code` header (validated) |
+| userPermissions  | string[] | Permissions from the user's role(s) in the target organization    |
+| userRoles        | string[] | Role codes from the user's assignments in the target organization |
+
+### Required Permissions
+
+| Permission                  | Description                          |
+| --------------------------- | ------------------------------------ |
+| `mnt.work.request.release`  | Required to release a Work Request   |
+
+### Role Restriction
+
+The following roles are authorized to release a Work Request:
+
+| Role                       |
+| -------------------------- |
+| MANUFACTURING_FACILITATOR  |
+| SUPERVISOR_MAINTENANCE_01  |
+| SUPERVISOR_MAINTENANCE_02  |
+
+### Validations
+
+**R-WR-RL-01**
+
+IF `userPermissions` does not include `mnt.work.request.release`,  
+THEN the system SHALL reject the request with a 403 status and error code `MISSING_PERMISSION`.
+
+**R-WR-RL-02**
+
+IF the user's role is not in the authorized roles list,  
+THEN the system SHALL reject the request with a 403 status and error code `ROLE_NOT_AUTHORIZED`.
+
+**R-WR-RL-03**
+
+IF the Work Request does not exist,  
+THEN the system SHALL reject the request with a 404 status.
+
+**R-WR-RL-04**
+
+IF the Work Request's current status is not `ON_HOLD`,  
+THEN the system SHALL reject the request with a 400 status.
+
+### Processing
+
+**R-WR-RL-05**
+
+WHEN a valid release request is received,  
+the system SHALL:
+
+1. Set `statusCode` to `RELEASED`
+2. Set `releasedAt` to the current timestamp
+3. Set `updatedBy`, `updatedByName`, and `updatedAt`
+4. NOT modify the associated Work Order in any way
+
+### Response
+
+Returns the updated Work Request with `statusCode: "RELEASED"` and `releasedAt` set.
+
+---
+
 ## Complete Work Request
 
 ### Communication
@@ -571,6 +650,7 @@ Returns the canceled Work Request with `statusCode: "CANCELED"` and `canceledAt`
 
 | From Status | Allowed Transitions To |
 | ----------- | ---------------------- |
+| ON_HOLD     | RELEASED               |
 | RELEASED    | COMPLETED, CANCELED    |
 | COMPLETED   | CANCELED               |
 | CANCELED    | [] (terminal)          |
@@ -579,6 +659,7 @@ Returns the canceled Work Request with `statusCode: "CANCELED"` and `canceledAt`
 
 | Work Request Transition | Work Order Impact                                               |
 | ----------------------- | --------------------------------------------------------------- |
+| ON_HOLD → RELEASED      | None                                                            |
 | RELEASED → COMPLETED    | None                                                            |
 | RELEASED → CANCELED     | WO canceled, all operations canceled, Oracle sync if applicable |
 | COMPLETED → CANCELED    | WO canceled, all operations canceled, Oracle sync if applicable |

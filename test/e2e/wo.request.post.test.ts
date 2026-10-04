@@ -35,7 +35,7 @@ describe("WO Request POST (e2e, NATS)", () => {
     expect(response.workRequest.organizationCode).toBe(
       context.organizationCode,
     );
-    expect(response.workRequest.statusCode).toBe("RELEASED");
+    expect(response.workRequest.statusCode).toBe("ON_HOLD");
     expect(response.workRequest.operatorCode).toBe("OP-001");
     expect(response.workRequest.operatorName).toBe("John Operator");
     expect(response.workRequest.createdBy).toBe(context.actor.id);
