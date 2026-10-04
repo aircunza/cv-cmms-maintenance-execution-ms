@@ -241,6 +241,18 @@ export class WorkRequestsService {
           ...(dto.issueDescription !== undefined
             ? { issueDescription: dto.issueDescription }
             : {}),
+          ...(dto.attendedByTechnician !== undefined
+            ? { attendedByTechnician: dto.attendedByTechnician }
+            : {}),
+          ...(dto.attendedByTechnicianName !== undefined
+            ? { attendedByTechnicianName: dto.attendedByTechnicianName }
+            : {}),
+          ...(dto.attendedBySupervisor !== undefined
+            ? { attendedBySupervisor: dto.attendedBySupervisor }
+            : {}),
+          ...(dto.attendedBySupervisorName !== undefined
+            ? { attendedBySupervisorName: dto.attendedBySupervisorName }
+            : {}),
           updatedBy: dto.actorId,
           updatedByName: dto.actorName,
           updatedAt: now,
@@ -486,6 +498,10 @@ export class WorkRequestsService {
       organizationName: wr.organizationName,
       operatorCode: wr.operatorCode,
       operatorName: wr.operatorName,
+      attendedByTechnician: wr.attendedByTechnician,
+      attendedByTechnicianName: wr.attendedByTechnicianName,
+      attendedBySupervisor: wr.attendedBySupervisor,
+      attendedBySupervisorName: wr.attendedBySupervisorName,
       createdBy: wr.createdBy,
       createdByName: wr.createdByName,
       updatedBy: wr.updatedBy,

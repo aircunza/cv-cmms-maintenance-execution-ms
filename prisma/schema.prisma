@@ -150,6 +150,10 @@ model MntWorkRequest {
   organizationName      String?   @map("organization_name") @db.NVarChar(255)
   operatorCode          String    @map("operator_code") @db.NVarChar(255)
   operatorName          String    @map("operator_name") @db.NVarChar(255)
+  attendedByTechnician     String?  @map("attended_by_technician") @db.NVarChar(255)
+  attendedByTechnicianName String?  @map("attended_by_technician_name") @db.NVarChar(255)
+  attendedBySupervisor     String?  @map("attended_by_supervisor") @db.NVarChar(255)
+  attendedBySupervisorName String?  @map("attended_by_supervisor_name") @db.NVarChar(255)
   createdBy             String    @map("created_by") @db.UniqueIdentifier
   createdByName         String    @map("created_by_name") @db.NVarChar(70)
   createdAt             DateTime? @default(now()) @map("created_at") @db.DateTimeOffset

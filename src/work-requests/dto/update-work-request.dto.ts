@@ -16,6 +16,26 @@ export class UpdateWorkRequestMessageDto {
   @MaxLength(240)
   issueDescription?: string;
 
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  attendedByTechnician?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  attendedByTechnicianName?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  attendedBySupervisor?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  attendedBySupervisorName?: string;
+
   @IsArray()
   @IsString({ each: true })
   userPermissions!: string[];

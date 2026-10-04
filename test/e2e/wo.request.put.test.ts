@@ -86,4 +86,37 @@ describe("WO Request Update (e2e, NATS)", () => {
       400,
     );
   });
+
+  it("updates the attendance fields of a work request", async () => {
+    const response = await sendPattern(context.client, "work.request.update", {
+      requestId: wr.workRequest.requestId,
+      attendedByTechnician: "TECH-001",
+      attendedByTechnicianName: "John Technician",
+      attendedBySupervisor: "SUP-001",
+      attendedBySupervisorName: "Jane Supervisor",
+      actorId: context.actor.id,
+      actorName: context.actor.username,
+      userPermissions: context.userPermissions,
+    });
+
+    expect(response.workRequest.requestId).toBe(wr.workRequest.requestId);
+    expect(response.workRequest.attendedByTechnician).toBe("TECH-001");
+    expect(response.workRequest.attendedByTechnicianName).toBe("John Technician");
+    expect(response.workRequest.attendedBySupervisor).toBe("SUP-001");
+    expect(response.workRequest.attendedBySupervisorName).toBe("Jane Supervisor");
+    expect(response.workRequest.updatedByName).toBe(context.actor.username);
+  });
+
+  it("rejects update when attendedByTechnician exceeds max length", async () => {
+    await assertRpcError(
+      sendPattern(context.client, "work.request.update", {
+        requestId: wr.workRequest.requestId,
+        attendedByTechnician: "T".repeat(256),
+        actorId: context.actor.id,
+        actorName: context.actor.username,
+        userPermissions: context.userPermissions,
+      }),
+      400,
+    );
+  });
 });

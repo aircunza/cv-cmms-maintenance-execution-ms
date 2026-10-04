@@ -337,7 +337,7 @@ Gateway endpoint: `PATCH /wo-request/:requestId`
 
 ### Purpose
 
-Updates the `issueDescription` of a Work Request.
+Updates the `issueDescription` and/or attendance fields of a Work Request.
 
 ### Gateway-Injected Fields
 
@@ -350,15 +350,19 @@ Updates the `issueDescription` of a Work Request.
 
 | Permission                | Description                                   |
 | ------------------------- | --------------------------------------------- |
-| `mnt.work.request.update` | Required to update a Work Request description |
+| `mnt.work.request.update` | Required to update a Work Request             |
 
 ### Request
 
 #### Editable Fields
 
-| Field            | Type   | Max Length | Description                       |
-| ---------------- | ------ | ---------- | --------------------------------- |
-| issueDescription | string | 240        | Updated description of the issue. |
+| Field                      | Type   | Max Length | Description                                     |
+| -------------------------- | ------ | ---------- | ----------------------------------------------- |
+| issueDescription           | string | 240        | Updated description of the issue.               |
+| attendedByTechnician       | string | 255        | Technician code who attended the work request.  |
+| attendedByTechnicianName   | string | 255        | Technician name who attended the work request.  |
+| attendedBySupervisor       | string | 255        | Supervisor code who attended the work request.  |
+| attendedBySupervisorName   | string | 255        | Supervisor name who attended the work request.  |
 
 ### Validations
 
@@ -382,7 +386,7 @@ THEN the system SHALL reject the request with a 400 status.
 **R-WR-UP-04**
 
 WHEN a valid update request is received,  
-the system SHALL update the `issueDescription` and set `updatedBy`, `updatedByName`, and `updatedAt`.
+the system SHALL update the provided fields (`issueDescription`, `attendedByTechnician`, `attendedByTechnicianName`, `attendedBySupervisor`, `attendedBySupervisorName`) and set `updatedBy`, `updatedByName`, and `updatedAt`.
 
 ### Response
 
