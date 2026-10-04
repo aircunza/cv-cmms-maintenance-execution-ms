@@ -128,13 +128,14 @@ Each operation in the `operations` array must contain:
 
 ##### Optional Fields (Operation Level)
 
-| Field                      | Type   | Description                   |
-| -------------------------- | ------ | ----------------------------- |
-| workOrderOperationMaterial | array  | Array of material objects.    |
-| unit                       | string | Unit of measure.              |
-| subunit                    | string | Subunit of measure.           |
-| maintainableItem           | string | Maintainable item identifier. |
-| operationCategory          | string | Operation category.           |
+| Field                      | Type    | Description                   |
+| -------------------------- | ------- | ----------------------------- |
+| workOrderOperationMaterial | array   | Array of material objects.    |
+| assetTreeId                | BigInt  | Asset tree identifier.        |
+| unit                       | string  | Unit of measure (max 370).    |
+| subunit                    | string  | Subunit of measure (max 370). |
+| maintainableItem           | string  | Maintainable item identifier (max 370). |
+| operationCategory          | string  | Operation category.           |
 
 #### Resource Object Structure
 

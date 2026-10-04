@@ -233,6 +233,7 @@ export class WoOperationsService {
             workOrderCode: BigInt(dto.workOrderCode),
             assetCode: dto.assetCode,
             assetShortDescription: dto.assetShortDescription,
+            assetTreeId: dto.assetTreeId !== undefined ? BigInt(dto.assetTreeId) : null,
             unit: dto.unit,
             subunit: dto.subunit,
             maintainableItem: dto.maintainableItem,
@@ -452,6 +453,18 @@ export class WoOperationsService {
             : {}),
           ...(dto.operationType !== undefined
             ? { operationType: dto.operationType }
+            : {}),
+          ...(dto.assetTreeId !== undefined
+            ? { assetTreeId: dto.assetTreeId !== null ? BigInt(dto.assetTreeId) : null }
+            : {}),
+          ...(dto.unit !== undefined
+            ? { unit: dto.unit }
+            : {}),
+          ...(dto.subunit !== undefined
+            ? { subunit: dto.subunit }
+            : {}),
+          ...(dto.maintainableItem !== undefined
+            ? { maintainableItem: dto.maintainableItem }
             : {}),
           updatedBy: dto.actorId,
           updatedByName: dto.actorName,

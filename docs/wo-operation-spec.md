@@ -30,9 +30,10 @@ Creates a new operation within an existing Work Order. Each operation MUST conta
 
 | Field                | Type              | Description                                                                                 |
 | -------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
-| unit                 | string            | Unit of measure.                                                                            |
-| subunit              | string            | Subunit of measure.                                                                         |
-| maintainableItem     | string            | Maintainable item identifier.                                                               |
+| assetTreeId          | BigInt            | Asset tree identifier.                                                                      |
+| unit                 | string (max 370)  | Unit of measure.                                                                            |
+| subunit              | string (max 370)  | Subunit of measure.                                                                         |
+| maintainableItem     | string (max 370)  | Maintainable item identifier.                                                               |
 | operationCategory    | string            | Operation category.                                                                         |
 | materials            | array             | Array of material objects.                                                                  |
 | actualStartDate      | string (ISO 8601) | Operation start date. Validated if provided; the stored value is derived from resources.    |
@@ -203,6 +204,10 @@ Partially updates editable fields of an existing operation. Does NOT allow manua
 | operationDescription | string (max 240 chars)  | Updated description.          |
 | operationType        | string                  | Updated type ("Internal", "Supplier"). |
 | operationStatus      | string                  | Updated status. Must be compatible with the parent Work Order's `woStatusCode`. |
+| assetTreeId          | BigInt                  | Updated asset tree identifier. |
+| unit                 | string (max 370)        | Updated unit of measure.      |
+| subunit              | string (max 370)        | Updated subunit of measure.   |
+| maintainableItem     | string (max 370)        | Updated maintainable item identifier. |
 
 #### Non-Editable Fields
 

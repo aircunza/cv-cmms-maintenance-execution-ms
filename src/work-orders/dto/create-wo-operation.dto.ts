@@ -57,18 +57,21 @@ export class CreateWoOperationDto {
   workOrderOperationMaterial?: CreateWoOperationMaterialDto[];
 
   @IsOptional()
+  assetTreeId?: number;
+
+  @IsOptional()
   @IsString()
-  @MaxLength(240)
+  @MaxLength(370)
   unit?: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(240)
+  @MaxLength(370)
   subunit?: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(240)
+  @MaxLength(370)
   maintainableItem?: string;
 
   @IsOptional()
