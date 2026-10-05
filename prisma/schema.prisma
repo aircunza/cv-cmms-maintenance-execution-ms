@@ -353,7 +353,7 @@ model MntAssetsTree {
 
   asset MntAsset @relation(fields: [assetCode], references: [assetCode], onDelete: NoAction)
 
-  @@unique([assetCode, unit, subunit, maintainableItem, sparePartCode], map: "uq_assets_tree_combination")
+  //@@unique([assetCode, unit, subunit, maintainableItem, sparePartCode], map: "uq_assets_tree_combination")
   @@index([assetCode], map: "idx_assets_tree_asset_code")
   @@map("mnt_assets_tree")
 }
