@@ -51,6 +51,7 @@ export class AssetsTreeService {
           maintainableItem: dto.maintainableItem,
           sparePartCode: dto.sparePartCode,
           sparePartName: dto.sparePartName,
+          itemPosition: dto.itemPosition,
           createdBy: dto.actorId,
           createdByName: dto.actorName,
         },
@@ -167,6 +168,9 @@ export class AssetsTreeService {
           ...(dto.sparePartName !== undefined
             ? { sparePartName: dto.sparePartName }
             : {}),
+          ...(dto.itemPosition !== undefined
+            ? { itemPosition: dto.itemPosition }
+            : {}),
           updatedBy: dto.actorId,
           updatedByName: dto.actorName,
           updatedAt: new Date(),
@@ -218,6 +222,7 @@ export class AssetsTreeService {
     maintainableItem: string;
     sparePartCode: string;
     sparePartName: string;
+    itemPosition: number | null;
     createdBy: string | null;
     createdByName: string | null;
     updatedBy: string | null;
@@ -234,6 +239,7 @@ export class AssetsTreeService {
       maintainableItem: record.maintainableItem,
       sparePartCode: record.sparePartCode,
       sparePartName: record.sparePartName,
+      itemPosition: record.itemPosition,
       createdBy: record.createdBy,
       createdByName: record.createdByName,
       updatedBy: record.updatedBy,

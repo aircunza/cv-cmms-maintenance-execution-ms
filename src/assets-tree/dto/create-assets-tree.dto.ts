@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+import { IsString, IsNotEmpty, MaxLength, IsInt, IsOptional } from 'class-validator';
 
 export class CreateAssetsTreeDto {
   @IsString()
@@ -30,4 +30,8 @@ export class CreateAssetsTreeDto {
   @IsNotEmpty()
   @MaxLength(255)
   sparePartName!: string;
+
+  @IsInt()
+  @IsOptional()
+  itemPosition?: number;
 }

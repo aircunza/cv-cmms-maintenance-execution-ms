@@ -342,6 +342,7 @@ model MntAssetsTree {
   maintainableItem String    @map("maintainable_item") @db.NVarChar(370)
   sparePartCode    String    @map("spare_part_code") @db.NVarChar(255)
   sparePartName    String    @map("spare_part_name") @db.NVarChar(255)
+  itemPosition     Int?      @map("item_position")
   createdBy        String?   @map("created_by") @db.UniqueIdentifier
   createdByName    String?   @map("created_by_name") @db.NVarChar(70)
   updatedBy        String?   @map("updated_by") @db.UniqueIdentifier

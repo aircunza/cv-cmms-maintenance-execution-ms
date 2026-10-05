@@ -155,6 +155,7 @@ export function defaultAssetsTreePayload(
     maintainableItem: "MI-001",
     sparePartCode: "SP-001",
     sparePartName: "Spare Part Name 001",
+    itemPosition: 1,
     actorId: context.actor.id,
     actorName: context.actor.username,
     ...overrides,

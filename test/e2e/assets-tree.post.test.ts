@@ -29,6 +29,7 @@ describe("Assets Tree POST (e2e, NATS)", () => {
       maintainableItem: "New Item",
       sparePartCode: "SP-NEW-001",
       sparePartName: "New Spare Part",
+      itemPosition: 5,
     });
 
     expect(response.assetsTree).toBeDefined();
@@ -39,6 +40,7 @@ describe("Assets Tree POST (e2e, NATS)", () => {
     expect(response.assetsTree.maintainableItem).toBe("New Item");
     expect(response.assetsTree.sparePartCode).toBe("SP-NEW-001");
     expect(response.assetsTree.sparePartName).toBe("New Spare Part");
+    expect(response.assetsTree.itemPosition).toBe(5);
     expect(response.assetsTree.isActive).toBe("Y");
     expect(response.assetsTree.createdBy).toBe(context.actor.id);
     expect(response.assetsTree.createdByName).toBe(context.actor.username);

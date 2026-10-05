@@ -31,6 +31,7 @@ describe("Assets Tree PATCH (e2e, NATS)", () => {
         id: +mockIds[0],
         unit: "Updated System",
         sparePartName: "Updated Spare Part",
+        itemPosition: 10,
         actorId: context.actor.id,
         actorName: context.actor.username,
       });
@@ -39,6 +40,7 @@ describe("Assets Tree PATCH (e2e, NATS)", () => {
       expect(response.assetsTree.id).toBe(mockIds[0]);
       expect(response.assetsTree.unit).toBe("Updated System");
       expect(response.assetsTree.sparePartName).toBe("Updated Spare Part");
+      expect(response.assetsTree.itemPosition).toBe(10);
       expect(response.assetsTree.updatedBy).toBe(context.actor.id);
       expect(response.assetsTree.updatedByName).toBe(context.actor.username);
       expect(response.assetsTree.updatedAt).toBeDefined();

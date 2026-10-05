@@ -41,6 +41,7 @@ describe("Assets Tree GET (e2e, NATS)", () => {
       expect(response.assetsTree.maintainableItem).toBe(mockAssetsTree[0].maintainableItem);
       expect(response.assetsTree.sparePartCode).toBe(mockAssetsTree[0].sparePartCode);
       expect(response.assetsTree.sparePartName).toBe(mockAssetsTree[0].sparePartName);
+      expect(response.assetsTree.itemPosition).toBe(mockAssetsTree[0].itemPosition);
       expect(response.assetsTree.isActive).toBe("Y");
     });
 

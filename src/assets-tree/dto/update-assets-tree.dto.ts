@@ -1,4 +1,4 @@
-import { IsString, IsOptional, MaxLength } from 'class-validator';
+import { IsString, IsOptional, MaxLength, IsInt } from 'class-validator';
 
 export class UpdateAssetsTreeDto {
   @IsString()
@@ -30,4 +30,8 @@ export class UpdateAssetsTreeDto {
   @IsOptional()
   @MaxLength(255)
   sparePartName?: string;
+
+  @IsInt()
+  @IsOptional()
+  itemPosition?: number | null;
 }
