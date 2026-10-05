@@ -5,12 +5,12 @@ import { CreateWoOperationResourceDto } from './create-wo-operation-resource.dto
 export class CreateWoOperationDto {
   @IsString()
   @IsOptional()
-  @MaxLength(120)
+  @MaxLength(600)
   operationName?: string;
 
   @IsString()
   @IsOptional()
-  @MaxLength(240)
+  @MaxLength(2000)
   operationDescription?: string;
 
   @IsOptional()

@@ -7,12 +7,12 @@ export class CreateWoOperationDto {
   @IsString()
   @IsNotEmpty()
   @MinLength(2)
-  @MaxLength(120)
+  @MaxLength(600)
   operationName: string;
 
   @IsString()
   @IsNotEmpty()
-  @MaxLength(240)
+  @MaxLength(2000)
   operationDescription: string;
 
   @IsNumber()

@@ -683,13 +683,13 @@ describe("WO Creation POST (e2e, NATS)", () => {
     );
   });
 
-  it("rejects when operationDescription > 240 chars", async () => {
+  it("rejects when operationDescription > 2000 chars", async () => {
     await assertRpcError(
       createWorkOrder(context, {
         operations: [
           {
             operationName: "Long Description",
-            operationDescription: "A".repeat(241),
+            operationDescription: "A".repeat(2001),
             operationSeqNumber: 10,
             createdBy: context.actor.id,
             operationStatus: "UNRELEASED",
@@ -711,7 +711,7 @@ describe("WO Creation POST (e2e, NATS)", () => {
         ],
       }),
       400,
-      "must be shorter than or equal to 240 characters",
+      "must be shorter than or equal to 2000 characters",
     );
   });
 
@@ -983,12 +983,12 @@ describe("WO Creation POST (e2e, NATS)", () => {
     );
   });
 
-  it("rejects when operationName > 120 chars", async () => {
+  it("rejects when operationName > 600 chars", async () => {
     await assertRpcError(
       createWorkOrder(context, {
         operations: [
           {
-            operationName: "A".repeat(121),
+            operationName: "A".repeat(601),
             operationDescription: "Too long name",
             operationSeqNumber: 10,
             createdBy: context.actor.id,
@@ -1011,7 +1011,7 @@ describe("WO Creation POST (e2e, NATS)", () => {
         ],
       }),
       400,
-      "must be shorter than or equal to 120 characters",
+      "must be shorter than or equal to 600 characters",
     );
   });
 

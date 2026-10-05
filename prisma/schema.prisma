@@ -97,7 +97,7 @@ model MntAsset {
   subsector                      String?   @db.NVarChar(50)
   isActive                       String    @default("Y") @map("is_active") @db.Char(1)
 
-  workCenter   WorkCenter?    @relation(fields: [workCenterId], references: [id], onDelete: NoAction)
+  workCenter   WorkCenter?      @relation(fields: [workCenterId], references: [id], onDelete: NoAction)
   workRequests MntWorkRequest[]
   assetsTree   MntAssetsTree[]
 
@@ -130,36 +130,36 @@ model MntHumanResource {
 }
 
 model MntWorkRequest {
-  requestId             BigInt    @id @default(autoincrement()) @map("request_id")
-  assetCode             String    @map("asset_code") @db.NVarChar(80)
-  assetShortDescription String?   @map("asset_short_description") @db.NVarChar(200)
-  issueDescription      String    @map("issue_description") @db.NVarChar(240)
-  statusCode            String    @map("status_code") @db.NVarChar(30)
-  requestedAt           DateTime  @default(now()) @map("requested_at") @db.DateTimeOffset
-  completedAt           DateTime? @map("completed_at") @db.DateTimeOffset
-  releasedAt            DateTime? @map("released_at") @db.DateTimeOffset
-  canceledAt            DateTime? @map("canceled_at") @db.DateTimeOffset
-  workCenterCode        String?   @map("work_center_code") @db.NVarChar(255)
-  workCenterDescription String?   @map("work_center_description") @db.NVarChar(255)
-  centerCostCode        Int?      @map("center_cost_code")
-  workAreaCode          String?   @map("work_area_code") @db.NVarChar(255)
-  workAreaDescription   String?   @map("work_area_description") @db.NVarChar(255)
-  sector                String?   @db.NVarChar(50)
-  subsector             String?   @db.NVarChar(50)
-  organizationCode      String    @map("organization_code") @db.NVarChar(255)
-  organizationName      String?   @map("organization_name") @db.NVarChar(255)
-  operatorCode          String    @map("operator_code") @db.NVarChar(255)
-  operatorName          String    @map("operator_name") @db.NVarChar(255)
-  attendedByTechnician     String?  @map("attended_by_technician") @db.NVarChar(255)
-  attendedByTechnicianName String?  @map("attended_by_technician_name") @db.NVarChar(255)
-  attendedBySupervisor     String?  @map("attended_by_supervisor") @db.NVarChar(255)
-  attendedBySupervisorName String?  @map("attended_by_supervisor_name") @db.NVarChar(255)
-  createdBy             String    @map("created_by") @db.UniqueIdentifier
-  createdByName         String    @map("created_by_name") @db.NVarChar(70)
-  createdAt             DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
-  updatedAt             DateTime? @map("updated_at") @db.DateTimeOffset
-  updatedBy             String?   @map("updated_by") @db.UniqueIdentifier
-  updatedByName         String?   @map("updated_by_name") @db.NVarChar(70)
+  requestId                BigInt    @id @default(autoincrement()) @map("request_id")
+  assetCode                String    @map("asset_code") @db.NVarChar(80)
+  assetShortDescription    String?   @map("asset_short_description") @db.NVarChar(200)
+  issueDescription         String    @map("issue_description") @db.NVarChar(240)
+  statusCode               String    @map("status_code") @db.NVarChar(30)
+  requestedAt              DateTime  @default(now()) @map("requested_at") @db.DateTimeOffset
+  completedAt              DateTime? @map("completed_at") @db.DateTimeOffset
+  releasedAt               DateTime? @map("released_at") @db.DateTimeOffset
+  canceledAt               DateTime? @map("canceled_at") @db.DateTimeOffset
+  workCenterCode           String?   @map("work_center_code") @db.NVarChar(255)
+  workCenterDescription    String?   @map("work_center_description") @db.NVarChar(255)
+  centerCostCode           Int?      @map("center_cost_code")
+  workAreaCode             String?   @map("work_area_code") @db.NVarChar(255)
+  workAreaDescription      String?   @map("work_area_description") @db.NVarChar(255)
+  sector                   String?   @db.NVarChar(50)
+  subsector                String?   @db.NVarChar(50)
+  organizationCode         String    @map("organization_code") @db.NVarChar(255)
+  organizationName         String?   @map("organization_name") @db.NVarChar(255)
+  operatorCode             String    @map("operator_code") @db.NVarChar(255)
+  operatorName             String    @map("operator_name") @db.NVarChar(255)
+  attendedByTechnician     String?   @map("attended_by_technician") @db.NVarChar(255)
+  attendedByTechnicianName String?   @map("attended_by_technician_name") @db.NVarChar(255)
+  attendedBySupervisor     String?   @map("attended_by_supervisor") @db.NVarChar(255)
+  attendedBySupervisorName String?   @map("attended_by_supervisor_name") @db.NVarChar(255)
+  createdBy                String    @map("created_by") @db.UniqueIdentifier
+  createdByName            String    @map("created_by_name") @db.NVarChar(70)
+  createdAt                DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
+  updatedAt                DateTime? @map("updated_at") @db.DateTimeOffset
+  updatedBy                String?   @map("updated_by") @db.UniqueIdentifier
+  updatedByName            String?   @map("updated_by_name") @db.NVarChar(70)
 
   asset      MntAsset       @relation(fields: [assetCode], references: [assetCode], onDelete: NoAction)
   workOrders MntWorkOrder[]
@@ -222,8 +222,8 @@ model MntWorkOrder {
 
 model MntWoOperation {
   operationCode         BigInt    @id @default(autoincrement()) @map("operation_code")
-  operationName         String?   @map("operation_name") @db.NVarChar(120)
-  operationDescription  String?   @map("operation_description") @db.NVarChar(240)
+  operationName         String?   @map("operation_name") @db.NVarChar(600) //@db.NVarChar(120)
+  operationDescription  String?   @map("operation_description") @db.NVarChar(2000) //@db.NVarChar(240)
   operationSeqNumber    Int?      @map("operation_seq_number")
   workOrderCode         BigInt    @map("work_order_code")
   assetCode             String?   @map("asset_code") @db.NVarChar(80)

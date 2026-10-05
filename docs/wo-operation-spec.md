@@ -19,8 +19,8 @@ Creates a new operation within an existing Work Order. Each operation MUST conta
 | Field                | Type                    | Description                                                                                  |
 | -------------------- | ----------------------- | -------------------------------------------------------------------------------------------- |
 | workOrderCode        | BigInt                  | Parent Work Order identifier.                                                                |
-| operationName        | string (min 2, max 120) | Name of the operation.                                                                       |
-| operationDescription | string (max 240 chars)  | Description of the operation.                                                                |
+| operationName        | string (min 2, max 600) | Name of the operation.                                                                       |
+| operationDescription | string (max 2000 chars) | Description of the operation.                                                                |
 | operationSeqNumber   | integer (> 0)           | Sequence number for ordering. Must be unique within the Work Order.                          |
 | operationType        | string                  | One of: "Internal", "Supplier".                                                              |
 | operationStatus      | string                  | One of: "UNRELEASED", "RELEASED", "IN_PROCESS", "COMPLETED", "NOT_DONE", "CANCELED", "ON_HOLD". |
@@ -109,12 +109,12 @@ THEN the system SHALL reject the request with a 400 status.
 
 **R-OP-CR-08**
 
-IF `operationName` is less than 2 characters or exceeds 120 characters,  
+IF `operationName` is less than 2 characters or exceeds 600 characters,  
 THEN the system SHALL reject the request with a 400 status.
 
 **R-OP-CR-09**
 
-IF `operationDescription` exceeds 240 characters,  
+IF `operationDescription` exceeds 2000 characters,  
 THEN the system SHALL reject the request with a 400 status.
 
 **R-OP-CR-10**

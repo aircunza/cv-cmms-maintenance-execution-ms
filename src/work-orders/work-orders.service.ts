@@ -229,17 +229,17 @@ export class WorkOrdersService {
           });
         }
 
-        if (op.operationName.length < 2 || op.operationName.length > 120) {
+        if (op.operationName.length < 2 || op.operationName.length > 600) {
           throw new RpcException({
             status: 400,
-            message: `Operation "${op.operationName}" name must be between 2 and 120 characters`,
+            message: `Operation "${op.operationName}" name must be between 2 and 600 characters`,
           });
         }
 
-        if (op.operationDescription.length > 240) {
+        if (op.operationDescription.length > 2000) {
           throw new RpcException({
             status: 400,
-            message: `Operation "${op.operationName}" description exceeds 240 characters`,
+            message: `Operation "${op.operationName}" description exceeds 2000 characters`,
           });
         }
 

@@ -1,0 +1,20 @@
+BEGIN TRY
+
+BEGIN TRAN;
+
+-- AlterTable
+ALTER TABLE [dbo].[mnt_wo_operations] ALTER COLUMN [operation_name] NVARCHAR(600) NULL;
+ALTER TABLE [dbo].[mnt_wo_operations] ALTER COLUMN [operation_description] NVARCHAR(2000) NULL;
+
+COMMIT TRAN;
+
+END TRY
+BEGIN CATCH
+
+IF @@TRANCOUNT > 0
+BEGIN
+    ROLLBACK TRAN;
+END;
+THROW
+
+END CATCH

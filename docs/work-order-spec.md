@@ -115,8 +115,8 @@ Each operation in the `operations` array must contain:
 
 | Field                      | Type                    | Description                                                                                     |
 | -------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------- |
-| operationName              | string (min 2, max 120) | Name of the operation.                                                                          |
-| operationDescription       | string (max 240 chars)  | Description of the operation.                                                                   |
+| operationName              | string (min 2, max 600) | Name of the operation.                                                                          |
+| operationDescription       | string (max 2000 chars) | Description of the operation.                                                                   |
 | operationSeqNumber         | integer (> 0)           | Sequence number for ordering operations. Must be unique within the Work Order.                  |
 | createdBy                  | string (UUID)           | User identifier who creates the operation. **Required**.                                        |
 | operationStatus            | string                  | One of: "UNRELEASED", "RELEASED", "IN_PROCESS", "COMPLETED", "NOT_DONE", "CANCELED", "ON_HOLD". |
@@ -435,12 +435,12 @@ THEN the system SHALL reject the request.
 
 **R-WO-CR-11**
 
-IF an operation's `operationName` is less than 2 characters or exceeds 120 characters,  
+IF an operation's `operationName` is less than 2 characters or exceeds 600 characters,  
 THEN the system SHALL reject the request.
 
 **R-WO-CR-12**
 
-IF an operation's `operationDescription` exceeds 240 characters,  
+IF an operation's `operationDescription` exceeds 2000 characters,  
 THEN the system SHALL reject the request.
 
 **R-WO-CR-13**
