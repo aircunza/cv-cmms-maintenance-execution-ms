@@ -146,7 +146,7 @@ model MntWorkRequest {
   workAreaDescription      String?   @map("work_area_description") @db.NVarChar(255)
   sector                   String?   @db.NVarChar(50)
   subsector                String?   @db.NVarChar(50)
-  organizationCode         String    @map("organization_code") @db.NVarChar(255)
+  organizationCode         String?   @map("organization_code") @db.NVarChar(255)
   organizationName         String?   @map("organization_name") @db.NVarChar(255)
   operatorCode             String    @map("operator_code") @db.NVarChar(255)
   operatorName             String    @map("operator_name") @db.NVarChar(255)
