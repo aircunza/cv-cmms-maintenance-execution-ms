@@ -102,6 +102,22 @@ export class AssetsTreeService {
     }
   }
 
+  async findByAssetCode(assetCode: string) {
+    try {
+      const assetsTree = await this.prisma.mntAssetsTree.findMany({
+        where: { assetCode },
+        orderBy: { id: "asc" },
+      });
+
+      return {
+        assetsTree: assetsTree.map(this.mapToResponse),
+        total: assetsTree.length,
+      };
+    } catch (error) {
+      throw new RpcException({ status: 500, message: "Internal server error" });
+    }
+  }
+
   async update(dto: UpdateAssetsTreeMessageDto) {
     try {
       const existing = await this.prisma.mntAssetsTree.findUnique({

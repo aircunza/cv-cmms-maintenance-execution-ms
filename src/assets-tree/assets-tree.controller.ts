@@ -27,6 +27,11 @@ export class AssetsTreeController {
     return this.assetsTreeService.findAll(dto);
   }
 
+  @MessagePattern('assets.tree.find.by-asset')
+  findByAssetCode(@Payload() dto: { assetCode: string }) {
+    return this.assetsTreeService.findByAssetCode(dto.assetCode);
+  }
+
   @MessagePattern('assets.tree.update')
   update(@Payload() dto: UpdateAssetsTreeMessageDto) {
     return this.assetsTreeService.update(dto);

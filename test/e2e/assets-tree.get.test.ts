@@ -99,4 +99,38 @@ describe("Assets Tree GET (e2e, NATS)", () => {
       expect(response.total).toBe(0);
     });
   });
+
+  describe("find.by-asset", () => {
+    it("returns all assets tree records for a specific assetCode", async () => {
+      const response = await sendPattern(
+        context.client,
+        "assets.tree.find.by-asset",
+        { assetCode: "AST-001" },
+      );
+
+      expect(response.assetsTree).toBeDefined();
+      expect(Array.isArray(response.assetsTree)).toBe(true);
+
+      const ast001Count = mockAssetsTree.filter(m => m.assetCode === "AST-001").length;
+      expect(response.assetsTree.length).toBe(ast001Count);
+      expect(response.total).toBe(ast001Count);
+
+      for (const record of response.assetsTree) {
+        expect(record.assetCode).toBe("AST-001");
+      }
+    });
+
+    it("returns empty array when assetCode has no records", async () => {
+      const response = await sendPattern(
+        context.client,
+        "assets.tree.find.by-asset",
+        { assetCode: "NON-EXISTENT-ASSET" },
+      );
+
+      expect(response.assetsTree).toBeDefined();
+      expect(Array.isArray(response.assetsTree)).toBe(true);
+      expect(response.assetsTree.length).toBe(0);
+      expect(response.total).toBe(0);
+    });
+  });
 });
