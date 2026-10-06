@@ -115,7 +115,7 @@ export class WorkRequestsService {
           assetShortDescription:
             dto.assetShortDescription ?? asset.assetShortDescription,
           issueDescription: dto.issueDescription,
-          statusCode: WR_STATUS.On_HOLD,
+          statusCode: WR_STATUS.ON_HOLD,
           requestedAt: new Date(),
           workCenterCode: asset.workCenterCode,
           workCenterDescription: asset.workCenterDescription,
