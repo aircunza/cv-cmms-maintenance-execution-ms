@@ -154,6 +154,7 @@ model MntWorkRequest {
   attendedByTechnicianName String?   @map("attended_by_technician_name") @db.NVarChar(255)
   attendedBySupervisor     String?   @map("attended_by_supervisor") @db.NVarChar(255)
   attendedBySupervisorName String?   @map("attended_by_supervisor_name") @db.NVarChar(255)
+  specialtyType            String?   @map("specialty_type") @db.NVarChar(80)
   createdBy                String    @map("created_by") @db.UniqueIdentifier
   createdByName            String    @map("created_by_name") @db.NVarChar(70)
   createdAt                DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
@@ -232,6 +233,7 @@ model MntWoOperation {
   unit                  String?   @db.NVarChar(370)
   subunit               String?   @db.NVarChar(370)
   maintainableItem      String?   @map("maintainable_item") @db.NVarChar(370)
+  specialtyType         String?   @map("specialty_type") @db.NVarChar(80)
   operationCategory     String?   @map("operation_category") @db.NVarChar(100)
   operationSubType      String?   @map("operation_sub_type") @db.NVarChar(30)
   operationStatus       String    @map("operation_status") @db.NVarChar(30)

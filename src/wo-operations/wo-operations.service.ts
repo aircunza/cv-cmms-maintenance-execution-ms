@@ -237,6 +237,7 @@ export class WoOperationsService {
             unit: dto.unit,
             subunit: dto.subunit,
             maintainableItem: dto.maintainableItem,
+            specialtyType: dto.specialtyType,
             operationCategory: dto.operationCategory,
             operationSubType: workOrder.workOrderSubType,
             operationStatus: dto.operationStatus ?? OP_STATUS.UNRELEASED,
@@ -465,6 +466,9 @@ export class WoOperationsService {
             : {}),
           ...(dto.maintainableItem !== undefined
             ? { maintainableItem: dto.maintainableItem }
+            : {}),
+          ...(dto.specialtyType !== undefined
+            ? { specialtyType: dto.specialtyType }
             : {}),
           updatedBy: dto.actorId,
           updatedByName: dto.actorName,

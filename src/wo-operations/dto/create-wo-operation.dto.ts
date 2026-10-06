@@ -47,6 +47,11 @@ export class CreateWoOperationDto {
   @MaxLength(370)
   maintainableItem?: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  specialtyType?: string;
+
   @IsString()
   @IsOptional()
   @MaxLength(100)

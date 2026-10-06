@@ -115,7 +115,7 @@ export class WorkRequestsService {
           assetShortDescription:
             dto.assetShortDescription ?? asset.assetShortDescription,
           issueDescription: dto.issueDescription,
-          statusCode: WR_STATUS.ON_HOLD,
+          statusCode: WR_STATUS.On_HOLD,
           requestedAt: new Date(),
           workCenterCode: asset.workCenterCode,
           workCenterDescription: asset.workCenterDescription,
@@ -128,6 +128,11 @@ export class WorkRequestsService {
           organizationName: asset.organizationName,
           operatorCode: dto.operatorCode,
           operatorName: dto.operatorName,
+          attendedByTechnician: dto.attendedByTechnician,
+          attendedByTechnicianName: dto.attendedByTechnicianName,
+          attendedBySupervisor: dto.attendedBySupervisor,
+          attendedBySupervisorName: dto.attendedBySupervisorName,
+          specialtyType: dto.specialtyType,
           createdBy: dto.actorId,
           createdByName: dto.actorName,
         },
@@ -252,6 +257,9 @@ export class WorkRequestsService {
             : {}),
           ...(dto.attendedBySupervisorName !== undefined
             ? { attendedBySupervisorName: dto.attendedBySupervisorName }
+            : {}),
+          ...(dto.specialtyType !== undefined
+            ? { specialtyType: dto.specialtyType }
             : {}),
           updatedBy: dto.actorId,
           updatedByName: dto.actorName,
@@ -502,6 +510,7 @@ export class WorkRequestsService {
       attendedByTechnicianName: wr.attendedByTechnicianName,
       attendedBySupervisor: wr.attendedBySupervisor,
       attendedBySupervisorName: wr.attendedBySupervisorName,
+      specialtyType: wr.specialtyType,
       createdBy: wr.createdBy,
       createdByName: wr.createdByName,
       updatedBy: wr.updatedBy,

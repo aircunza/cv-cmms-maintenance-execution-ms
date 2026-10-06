@@ -36,6 +36,10 @@ export class UpdateWorkRequestMessageDto {
   @MaxLength(255)
   attendedBySupervisorName?: string;
 
+  @IsOptional()
+  @IsString()
+  specialtyType?: string;
+
   @IsArray()
   @IsString({ each: true })
   userPermissions!: string[];
