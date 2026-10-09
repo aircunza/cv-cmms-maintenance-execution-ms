@@ -24,36 +24,72 @@ const INVALID_FILTER_DATA_MESSAGE = "Invalid filter data";
 const FIND_ALL_FILTER_FIELDS = new Set([
   "requestId",
   "assetCode",
+  "assetShortDescription",
   "issueDescription",
   "statusCode",
-  "organizationCode",
+  "requestedAt",
+  "completedAt",
+  "releasedAt",
+  "canceledAt",
+  "workCenterCode",
+  "workCenterDescription",
+  "centerCostCode",
   "workAreaCode",
+  "workAreaDescription",
+  "sector",
+  "subsector",
+  "organizationCode",
+  "organizationName",
   "operatorCode",
   "operatorName",
+  "attendedByTechnician",
+  "attendedByTechnicianName",
+  "attendedBySupervisor",
+  "attendedBySupervisorName",
+  "specialtyType",
+  "createdBy",
+  "createdByName",
   "createdAt",
-  "requestedAt",
-  "releasedAt",
-  "completedAt",
-  "canceledAt",
+  "updatedAt",
+  "updatedBy",
+  "updatedByName",
 ]);
 
 const STRING_FIELDS = new Set([
   "assetCode",
+  "assetShortDescription",
   "issueDescription",
   "statusCode",
-  "organizationCode",
+  "workCenterCode",
+  "workCenterDescription",
   "workAreaCode",
+  "workAreaDescription",
+  "sector",
+  "subsector",
+  "organizationCode",
+  "organizationName",
   "operatorCode",
   "operatorName",
+  "attendedByTechnician",
+  "attendedByTechnicianName",
+  "attendedBySupervisor",
+  "attendedBySupervisorName",
+  "specialtyType",
+  "createdBy",
+  "createdByName",
+  "updatedBy",
+  "updatedByName",
 ]);
 
 const BIGINT_FIELDS = new Set(["requestId"]);
+const INT_FIELDS = new Set(["centerCostCode"]);
 const DATE_FIELDS = new Set([
   "createdAt",
   "requestedAt",
   "releasedAt",
   "completedAt",
   "canceledAt",
+  "updatedAt",
 ]);
 
 type WorkRequestFilterOperator = "eq" | "like" | "gt" | "lt" | "in";
@@ -687,7 +723,7 @@ export class WorkRequestsService {
   private normalizeFieldValue(
     field: string,
     value: unknown,
-  ): string | bigint | Date {
+  ): string | bigint | number | Date {
     if (BIGINT_FIELDS.has(field)) {
       if (typeof value === "bigint") {
         return value;
@@ -702,6 +738,21 @@ export class WorkRequestsService {
           return BigInt(value);
         } catch {
           throw this.invalidFilterDataException();
+        }
+      }
+
+      throw this.invalidFilterDataException();
+    }
+
+    if (INT_FIELDS.has(field)) {
+      if (typeof value === "number" && Number.isInteger(value)) {
+        return value;
+      }
+
+      if (typeof value === "string" && value.trim() !== "") {
+        const parsed = parseInt(value, 10);
+        if (!Number.isNaN(parsed)) {
+          return parsed;
         }
       }
 
@@ -733,8 +784,8 @@ export class WorkRequestsService {
   private normalizeComparableFieldValue(
     field: string,
     value: unknown,
-  ): bigint | Date {
-    if (!BIGINT_FIELDS.has(field) && !DATE_FIELDS.has(field)) {
+  ): bigint | number | Date {
+    if (!BIGINT_FIELDS.has(field) && !DATE_FIELDS.has(field) && !INT_FIELDS.has(field)) {
       throw this.invalidFilterDataException();
     }
 
