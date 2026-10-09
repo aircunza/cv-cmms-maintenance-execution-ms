@@ -1,5 +1,6 @@
 import {
   IsNotEmpty,
+  IsOptional,
   IsArray,
   IsString,
   IsUUID,
@@ -12,9 +13,9 @@ export class WorkRequestIdDto {
 }
 
 export class WorkRequestReadDto extends WorkRequestIdDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  organizationCode!: string;
+  organizationCode?: string;
 
   @IsArray()
   @IsString({ each: true })
@@ -22,6 +23,8 @@ export class WorkRequestReadDto extends WorkRequestIdDto {
 }
 
 export class WorkRequestIdMessageDto extends WorkRequestReadDto {
+  declare organizationCode: string;
+
   @IsArray()
   @IsString({ each: true })
   userPermissions!: string[];

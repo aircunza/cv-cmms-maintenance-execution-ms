@@ -209,7 +209,7 @@ export class WorkRequestsService {
       const workRequest = await this.prisma.mntWorkRequest.findFirst({
         where: {
           requestId: BigInt(dto.requestId),
-          organizationCode: dto.organizationCode,
+          ...(dto.organizationCode ? { organizationCode: dto.organizationCode } : {}),
         },
         include: { workOrders: true },
       });
@@ -569,16 +569,6 @@ export class WorkRequestsService {
     userRoles?: string[];
   }) {
     if (
-      typeof dto.organizationCode !== "string" ||
-      dto.organizationCode.trim().length === 0
-    ) {
-      throw new RpcException({
-        status: 400,
-        message: "organizationCode is required",
-      });
-    }
-
-    if (
       !Array.isArray(dto.userRoles) ||
       dto.userRoles.some(
         (role) => typeof role !== "string" || role.trim().length === 0,
@@ -594,9 +584,11 @@ export class WorkRequestsService {
   private buildFindAllWhere(
     dto: FindAllWorkRequestDto,
   ): Prisma.MntWorkRequestWhereInput {
-    const conditions: Prisma.MntWorkRequestWhereInput[] = [
-      { organizationCode: dto.organizationCode },
-    ];
+    const conditions: Prisma.MntWorkRequestWhereInput[] = [];
+
+    if (dto.organizationCode) {
+      conditions.push({ organizationCode: dto.organizationCode });
+    }
 
     if (dto.filters) {
       if (!Array.isArray(dto.filters)) {

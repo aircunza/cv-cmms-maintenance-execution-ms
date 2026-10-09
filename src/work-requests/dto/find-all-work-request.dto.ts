@@ -32,10 +32,10 @@ export class FindAllWorkRequestDto {
   @IsOptional()
   offset?: number;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(255)
-  organizationCode!: string;
+  organizationCode?: string;
 
   @IsArray()
   @IsString({ each: true })
