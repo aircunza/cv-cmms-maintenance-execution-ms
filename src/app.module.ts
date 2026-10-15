@@ -10,6 +10,7 @@ import { OperationHumanResourcesModule } from "./operation-human-resources/opera
 import { HumanResourcesModule } from "./human-resources/human-resources.module";
 import { WorkAreasModule } from "./work-areas/work-areas.module";
 import { WorkCentersModule } from "./work-centers/work-centers.module";
+import { WorkDefinitionsModule } from "./work-definitions/work-definitions.module";
 import { MicroserviceRpcErrorCaptureLayer } from "./common/microservice-error-layer/microservice-rpc-error-capture.layer";
 
 @Module({
@@ -24,6 +25,7 @@ import { MicroserviceRpcErrorCaptureLayer } from "./common/microservice-error-la
     HumanResourcesModule,
     WorkAreasModule,
     WorkCentersModule,
+    WorkDefinitionsModule,
   ],
   controllers: [],
   providers: [

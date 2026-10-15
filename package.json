@@ -64,7 +64,11 @@
     "test:e2e:wc:post": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work-centers.post.test.ts",
     "test:e2e:wc:get": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work-centers.get.test.ts",
     "test:e2e:wc:patch": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work-centers.patch.test.ts",
-    "test:e2e:wc": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit --runInBand --config ./test/jest-e2e.json --runTestsByPath ./test/e2e/work-centers.post.test.ts ./test/e2e/work-centers.get.test.ts ./test/e2e/work-centers.patch.test.ts"
+    "test:e2e:wc": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit --runInBand --config ./test/jest-e2e.json --runTestsByPath ./test/e2e/work-centers.post.test.ts ./test/e2e/work-centers.get.test.ts ./test/e2e/work-centers.patch.test.ts",
+    "test:e2e:wd:post": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work-definition.post.test.ts",
+    "test:e2e:wd:get": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work-definition.get.test.ts",
+    "test:e2e:wd:patch": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json --forceExit --runInBand --runTestsByPath ./test/e2e/work-definition.patch.test.ts",
+    "test:e2e:wd": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit --runInBand --config ./test/jest-e2e.json --runTestsByPath ./test/e2e/work-definition.post.test.ts ./test/e2e/work-definition.get.test.ts ./test/e2e/work-definition.patch.test.ts"
   
     
   },

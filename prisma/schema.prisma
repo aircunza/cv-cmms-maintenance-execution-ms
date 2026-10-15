@@ -359,3 +359,14 @@ model MntAssetsTree {
   @@index([assetCode], map: "idx_assets_tree_asset_code")
   @@map("mnt_assets_tree")
 }
+
+model MntWorkDefinition {
+  workDefinitionId          BigInt    @id @default(autoincrement()) @map("work_definition_id")
+  workDefinitionCode        String    @unique @map("work_definition_code") @db.NVarChar(255)
+  workDefinitionDescription String    @map("work_definition_description") @db.NVarChar(500)
+  isActive                  String    @default("Y") @map("is_active") @db.Char(1)
+  createdAt                 DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
+  updatedAt                 DateTime? @map("updated_at") @db.DateTimeOffset
+
+  @@map("mnt_work_definitions")
+}

@@ -66,6 +66,7 @@ export class OrganizationContextBuilder {
       (organization) => organization.code,
     );
     const assetCodes = mockAssets.map((asset) => asset.assetCode);
+    const resourceCodes = mockHumanResources.map((hr) => hr.resourceCode);
 
     // Delete from child tables to parent tables to respect FK constraints.
     await this.prisma.$transaction(async (tx) => {
@@ -78,7 +79,7 @@ export class OrganizationContextBuilder {
       });
 
       await tx.mntOperationHumanResourceUsage.deleteMany({
-        where: { organizationCode: { in: organizationCodes } },
+        where: { resourceCode: { in: resourceCodes } },
       });
 
       await tx.mntWoOperation.deleteMany({
@@ -92,6 +93,8 @@ export class OrganizationContextBuilder {
       await tx.mntWorkRequest.deleteMany({
         where: { organizationCode: { in: organizationCodes } },
       });
+
+      await tx.mntWorkDefinition.deleteMany({});
 
       await tx.mntHumanResource.deleteMany({
         where: { organizationCode: { in: organizationCodes } },
