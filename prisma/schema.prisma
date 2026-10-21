@@ -259,8 +259,11 @@ model MntWoOperation {
   createdByName         String    @map("created_by_name") @db.NVarChar(70)
   updatedBy             String?   @map("updated_by") @db.UniqueIdentifier
   updatedByName         String?   @map("updated_by_name") @db.NVarChar(70)
-  reviewedBy            String?   @map("reviewed_by") @db.UniqueIdentifier
-  reviewedByName        String?   @map("reviewed_by_name") @db.NVarChar(70)
+  reviewedByCode        String?   @map("reviewed_by_code") @db.NVarChar(254)
+  reviewedByName        String?   @map("reviewed_by_name") @db.NVarChar(254)
+  reviewerComment       String?   @map("reviewer_comment") @db.NVarChar(254)
+  pendingTask           String?   @map("pending_task") @db.NVarChar(1370)
+  pendingTaskStatus     String?   @map("pending_task_status") @db.NVarChar(40)
   createdAt             DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
   updatedAt             DateTime? @map("updated_at") @db.DateTimeOffset
   reviewedAt            DateTime? @map("reviewed_at") @db.DateTimeOffset

@@ -43,22 +43,6 @@ export class WoOperationsController {
     return this.woOperationsService.update(dto);
   }
 
-  @MessagePattern("wo.operation.review")
-  review(
-    @Payload()
-    dto: {
-      operationCode: number;
-      actorId: string;
-      actorName: string;
-    },
-  ) {
-    return this.woOperationsService.review(
-      dto.operationCode,
-      dto.actorId,
-      dto.actorName,
-    );
-  }
-
   @MessagePattern("wo.operation.cancel")
   cancel(
     @Payload()

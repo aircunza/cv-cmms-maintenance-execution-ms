@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNotEmpty, MaxLength, IsNumber, IsArray, ArrayNotEmpty, ValidateNested } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty, MaxLength, IsNumber, IsArray, ArrayNotEmpty, ValidateNested, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateWoOperationResourceDto } from './create-wo-operation-resource.dto';
 
@@ -125,4 +125,25 @@ export class CreateWoOperationDto {
   @IsOptional()
   @MaxLength(255)
   organizationName?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(254)
+  reviewedByCode?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(254)
+  reviewerComment?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(1370)
+  pendingTask?: string;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(40)
+  @IsIn(['RELEASED', 'COMPLETED', 'IN_PROCESS', 'UNRELEASED', 'ON_HOLD', 'CANCELED', 'NOT_DONE'])
+  pendingTaskStatus?: string;
 }

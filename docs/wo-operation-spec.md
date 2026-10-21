@@ -38,6 +38,10 @@ Creates a new operation within an existing Work Order. Each operation MUST conta
 | materials            | array             | Array of material objects.                                                                  |
 | actualStartDate      | string (ISO 8601) | Operation start date. Validated if provided; the stored value is derived from resources.    |
 | actualCompletionDate | string (ISO 8601) | Operation completion date. Validated if provided; the stored value is derived from resources. |
+| reviewedByCode       | string (max 254)  | Code of the user who reviewed the operation.                                                |
+| reviewerComment      | string (max 254)  | Comment from the reviewer.                                                                  |
+| pendingTask          | string (max 1370) | Description of a pending task.                                                              |
+| pendingTaskStatus    | string (max 40)   | Status of the pending task. One of: "UNRELEASED", "RELEASED", "IN_PROCESS", "COMPLETED", "NOT_DONE", "CANCELED", "ON_HOLD". |
 
 #### Resource Object Structure (within operation creation)
 
@@ -208,6 +212,10 @@ Partially updates editable fields of an existing operation. Does NOT allow manua
 | unit                 | string (max 370)        | Updated unit of measure.      |
 | subunit              | string (max 370)        | Updated subunit of measure.   |
 | maintainableItem     | string (max 370)        | Updated maintainable item identifier. |
+| reviewedByCode       | string (max 254)        | Code of the user who reviewed the operation. |
+| reviewerComment      | string (max 254)        | Comment from the reviewer.    |
+| pendingTask          | string (max 1370)       | Description of a pending task. |
+| pendingTaskStatus    | string (max 40)         | Status of the pending task. One of: "UNRELEASED", "RELEASED", "IN_PROCESS", "COMPLETED", "NOT_DONE", "CANCELED", "ON_HOLD". |
 
 #### Non-Editable Fields
 
@@ -362,31 +370,6 @@ THEN the system SHALL return an internal server error response.
 
 ---
 
-## Review Operation
-
-### Communication
-
-NATS Pattern: `wo.operation.review` (via gateway)
-
-Gateway endpoint: `PATCH /api/v1/work-orders/:workOrderCode/operations/:operationCode/review`
-
-### Purpose
-
-Marks an operation as reviewed by a user.
-
-### Processing
-
-**R-OP-RV-01**
-
-WHEN an operation is reviewed,  
-the system SHALL set `reviewedBy`, `reviewedByName`, and `reviewedAt` to the current actor and timestamp.
-
-### Response
-
-Returns the updated operation with review fields set.
-
----
-
 ## System Generated / Calculated Fields (Operation Level)
 
 | Field                 | Type     | Description                                                |
@@ -414,8 +397,11 @@ Returns the updated operation with review fields set.
 | organizationName      | string   | Organization name.                                         |
 | oclWorkOrderId        | BigInt   | Oracle Cloud work order ID.                                |
 | oclWorkOrderNumber    | string   | Oracle Cloud work order number.                            |
-| reviewedBy            | string   | Reviewed by user.                                          |
-| reviewedByName        | string   | Reviewed by user name.                                     |
+| reviewedByCode        | string   | Code of the user who reviewed the operation.               |
+| reviewedByName        | string   | Name of the user who reviewed the operation.               |
+| reviewerComment       | string   | Comment from the reviewer.                                 |
+| pendingTask           | string   | Description of a pending task.                             |
+| pendingTaskStatus     | string   | Status of the pending task.                                |
 | reviewedAt            | DateTime | Review timestamp.                                          |
 | canceledReason        | string   | Reason for cancellation (set when status = CANCELED).      |
 

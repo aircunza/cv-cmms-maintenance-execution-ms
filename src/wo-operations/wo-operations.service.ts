@@ -254,6 +254,10 @@ export class WoOperationsService {
             subsector: dto.subsector,
             organizationCode: dto.organizationCode,
             organizationName: dto.organizationName,
+            reviewedByCode: dto.reviewedByCode,
+            reviewerComment: dto.reviewerComment,
+            pendingTask: dto.pendingTask,
+            pendingTaskStatus: dto.pendingTaskStatus,
             createdBy: dto.actorId,
             createdByName: dto.actorName,
           },
@@ -470,35 +474,21 @@ export class WoOperationsService {
           ...(dto.specialtyType !== undefined
             ? { specialtyType: dto.specialtyType }
             : {}),
+          ...(dto.reviewedByCode !== undefined
+            ? { reviewedByCode: dto.reviewedByCode }
+            : {}),
+          ...(dto.reviewerComment !== undefined
+            ? { reviewerComment: dto.reviewerComment }
+            : {}),
+          ...(dto.pendingTask !== undefined
+            ? { pendingTask: dto.pendingTask }
+            : {}),
+          ...(dto.pendingTaskStatus !== undefined
+            ? { pendingTaskStatus: dto.pendingTaskStatus }
+            : {}),
           updatedBy: dto.actorId,
           updatedByName: dto.actorName,
           updatedAt: new Date(),
-        },
-      });
-
-      return { operation: updated };
-    } catch (error) {
-      if (error instanceof RpcException) throw error;
-      throw new RpcException({ status: 500, message: "Internal server error" });
-    }
-  }
-
-  async review(operationCode: number, actorId: string, actorName: string) {
-    try {
-      const existing = await this.prisma.mntWoOperation.findFirst({
-        where: { operationCode: BigInt(operationCode) },
-      });
-
-      if (!existing) {
-        throw new RpcException({ status: 404, message: "Operation not found" });
-      }
-
-      const updated = await this.prisma.mntWoOperation.update({
-        where: { operationCode: BigInt(operationCode) },
-        data: {
-          reviewedBy: actorId,
-          reviewedByName: actorName,
-          reviewedAt: new Date(),
         },
       });
 
