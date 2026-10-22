@@ -39,6 +39,8 @@ Creates a new operation within an existing Work Order. Each operation MUST conta
 | actualStartDate      | string (ISO 8601) | Operation start date. Validated if provided; the stored value is derived from resources.    |
 | actualCompletionDate | string (ISO 8601) | Operation completion date. Validated if provided; the stored value is derived from resources. |
 | reviewedByCode       | string (max 254)  | Code of the user who reviewed the operation.                                                |
+| reviewedByName       | string (max 254)  | Name of the user who reviewed the operation.                                                |
+| reviewedAt           | string (ISO 8601) | Timestamp of when the operation was reviewed.                                               |
 | reviewerComment      | string (max 254)  | Comment from the reviewer.                                                                  |
 | pendingTask          | string (max 1370) | Description of a pending task.                                                              |
 | pendingTaskStatus    | string (max 40)   | Status of the pending task. One of: "UNRELEASED", "RELEASED", "IN_PROCESS", "COMPLETED", "NOT_DONE", "CANCELED", "ON_HOLD". |
@@ -213,6 +215,8 @@ Partially updates editable fields of an existing operation. Does NOT allow manua
 | subunit              | string (max 370)        | Updated subunit of measure.   |
 | maintainableItem     | string (max 370)        | Updated maintainable item identifier. |
 | reviewedByCode       | string (max 254)        | Code of the user who reviewed the operation. |
+| reviewedByName       | string (max 254)        | Name of the user who reviewed the operation. |
+| reviewedAt           | string (ISO 8601)       | Timestamp of when the operation was reviewed. |
 | reviewerComment      | string (max 254)        | Comment from the reviewer.    |
 | pendingTask          | string (max 1370)       | Description of a pending task. |
 | pendingTaskStatus    | string (max 40)         | Status of the pending task. One of: "UNRELEASED", "RELEASED", "IN_PROCESS", "COMPLETED", "NOT_DONE", "CANCELED", "ON_HOLD". |

@@ -255,6 +255,8 @@ export class WoOperationsService {
             organizationCode: dto.organizationCode,
             organizationName: dto.organizationName,
             reviewedByCode: dto.reviewedByCode,
+            reviewedByName: dto.reviewedByName,
+            reviewedAt: dto.reviewedAt,
             reviewerComment: dto.reviewerComment,
             pendingTask: dto.pendingTask,
             pendingTaskStatus: dto.pendingTaskStatus,
@@ -476,6 +478,12 @@ export class WoOperationsService {
             : {}),
           ...(dto.reviewedByCode !== undefined
             ? { reviewedByCode: dto.reviewedByCode }
+            : {}),
+          ...(dto.reviewedByName !== undefined
+            ? { reviewedByName: dto.reviewedByName }
+            : {}),
+          ...(dto.reviewedAt !== undefined
+            ? { reviewedAt: dto.reviewedAt }
             : {}),
           ...(dto.reviewerComment !== undefined
             ? { reviewerComment: dto.reviewerComment }

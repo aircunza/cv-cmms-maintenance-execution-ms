@@ -52,6 +52,14 @@ export class UpdateWoOperationDto {
   @IsString()
   @IsOptional()
   @MaxLength(254)
+  reviewedByName?: string;
+
+  @IsOptional()
+  reviewedAt?: Date;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(254)
   reviewerComment?: string;
 
   @IsString()
