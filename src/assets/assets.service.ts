@@ -1,9 +1,91 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
+import type { Prisma } from 'generated/prisma/client';
 import { NATS_SERVICE } from 'src/config';
 import { PrismaService } from 'src/prisma.service';
-import { CreateAssetDto, FindAllAssetsDto, UpdateAssetDto } from './dto';
+import { CreateAssetDto, FindAllAssetsDto, AssetFilterDto, UpdateAssetDto } from './dto';
+
+const INVALID_FILTER_DATA_MESSAGE = 'Invalid filter data';
+
+const FIND_ALL_FILTER_FIELDS = new Set([
+  'assetCode',
+  'assetDescription',
+  'assetShortDescription',
+  'assetStatus',
+  'operationalHoursOrigin',
+  'organizationCode',
+  'organizationName',
+  'countryCode',
+  'countryName',
+  'workCenterId',
+  'workCenterCode',
+  'workCenterDescription',
+  'centerCostCode',
+  'workAreaCode',
+  'workAreaDescription',
+  'accountingAccountCode',
+  'supervisorCode',
+  'assetDependency',
+  'processTypeCode',
+  'subprocessTypeCode',
+  'hierarchyCode',
+  'assetClass',
+  'enabledMaintenanceProgram',
+  'enabledMaintenanceHoursControl',
+  'enabledFinancialKpi',
+  'enabledTechnicalKpi',
+  'woAllowedFlag',
+  'createdBy',
+  'updatedBy',
+  'updateUp',
+  'createdAt',
+  'enabledIiot',
+  'sector',
+  'subsector',
+  'isActive',
+]);
+
+const STRING_FIELDS = new Set([
+  'assetCode',
+  'assetDescription',
+  'assetShortDescription',
+  'assetStatus',
+  'operationalHoursOrigin',
+  'organizationCode',
+  'organizationName',
+  'countryCode',
+  'countryName',
+  'workCenterId',
+  'workCenterCode',
+  'workCenterDescription',
+  'workAreaCode',
+  'workAreaDescription',
+  'accountingAccountCode',
+  'supervisorCode',
+  'assetDependency',
+  'processTypeCode',
+  'subprocessTypeCode',
+  'hierarchyCode',
+  'assetClass',
+  'enabledMaintenanceProgram',
+  'enabledMaintenanceHoursControl',
+  'enabledFinancialKpi',
+  'enabledTechnicalKpi',
+  'woAllowedFlag',
+  'createdBy',
+  'updatedBy',
+  'enabledIiot',
+  'sector',
+  'subsector',
+  'isActive',
+]);
+
+const INT_FIELDS = new Set(['centerCostCode']);
+
+const DATE_FIELDS = new Set(['updateUp', 'createdAt']);
+
+type AssetFilterOperator = 'eq' | 'like' | 'gt' | 'lt' | 'in';
 
 interface OrganizationSnapshot {
   organizationCode: string;
@@ -324,30 +406,17 @@ export class AssetsService {
   }
 
   async findAll(dto: FindAllAssetsDto) {
-    const {
-      assetCode,
-      organizationCode,
-      supervisorCode,
-      assetStatus,
-      isActive,
-    } = dto;
-
     try {
+      const where = this.buildFindAllWhere(dto);
+      const order = this.buildFindAllOrder(dto.order);
+      const limit = this.parsePaginationValue(dto.limit);
+      const offset = this.parsePaginationValue(dto.offset);
+
       const assets = await this.prisma.mntAsset.findMany({
-        where: {
-          ...(assetCode ? { assetCode: { contains: assetCode } } : {}),
-          ...(organizationCode
-            ? { organizationCode: { contains: organizationCode } }
-            : {}),
-          ...(supervisorCode
-            ? { supervisorCode: { contains: supervisorCode } }
-            : {}),
-          ...(assetStatus ? { assetStatus: { contains: assetStatus } } : {}),
-          ...(isActive ? { isActive } : { isActive: 'Y' }),
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        where,
+        orderBy: order,
+        ...(limit !== undefined ? { take: limit } : {}),
+        ...(offset !== undefined ? { skip: offset } : {}),
       });
 
       await this.syncOrganizationNameForAssets(
@@ -361,26 +430,221 @@ export class AssetsService {
       );
 
       const refreshedAssets = await this.prisma.mntAsset.findMany({
-        where: {
-          ...(assetCode ? { assetCode: { contains: assetCode } } : {}),
-          ...(organizationCode
-            ? { organizationCode: { contains: organizationCode } }
-            : {}),
-          ...(supervisorCode
-            ? { supervisorCode: { contains: supervisorCode } }
-            : {}),
-          ...(assetStatus ? { assetStatus: { contains: assetStatus } } : {}),
-          ...(isActive ? { isActive } : { isActive: 'Y' }),
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
+        where,
+        orderBy: order,
+        ...(limit !== undefined ? { take: limit } : {}),
+        ...(offset !== undefined ? { skip: offset } : {}),
       });
 
       return { assets: refreshedAssets, total: refreshedAssets.length };
     } catch {
       throw new RpcException({ status: 500, message: 'Internal server error' });
     }
+  }
+
+  private buildFindAllWhere(
+    dto: FindAllAssetsDto,
+  ): Prisma.MntAssetWhereInput {
+    const conditions: Prisma.MntAssetWhereInput[] = [];
+
+    if (dto.organizationCode) {
+      conditions.push({ organizationCode: dto.organizationCode });
+    }
+
+    if (dto.filters) {
+      if (!Array.isArray(dto.filters)) {
+        throw this.invalidFilterDataException();
+      }
+
+      const filters = dto.filters.map((filter) =>
+        this.mapFilterToWhereCondition(filter),
+      );
+      conditions.push(...filters);
+    }
+
+    return conditions.length > 0 ? { AND: conditions } : {};
+  }
+
+  private buildFindAllOrder(
+    order: FindAllAssetsDto['order'],
+  ): Prisma.MntAssetOrderByWithRelationInput[] {
+    if (order === undefined) {
+      return [{ createdAt: 'desc' }, { assetCode: 'desc' }];
+    }
+
+    if (!Array.isArray(order)) {
+      throw this.invalidFilterDataException();
+    }
+
+    const mapped = order.map((criterion) => {
+      if (!Array.isArray(criterion) || criterion.length !== 2) {
+        throw this.invalidFilterDataException();
+      }
+
+      const [rawField, rawDirection] = criterion;
+
+      if (
+        typeof rawField !== 'string' ||
+        !FIND_ALL_FILTER_FIELDS.has(rawField) ||
+        typeof rawDirection !== 'string'
+      ) {
+        throw this.invalidFilterDataException();
+      }
+
+      const direction = rawDirection.toLowerCase();
+      if (direction !== 'asc' && direction !== 'desc') {
+        throw this.invalidFilterDataException();
+      }
+
+      return {
+        [rawField]: direction,
+      } as Prisma.MntAssetOrderByWithRelationInput;
+    });
+
+    return mapped.length > 0
+      ? mapped
+      : [{ createdAt: 'desc' }, { assetCode: 'desc' }];
+  }
+
+  private mapFilterToWhereCondition(
+    filter: AssetFilterDto,
+  ): Prisma.MntAssetWhereInput {
+    if (!filter || typeof filter !== 'object') {
+      throw this.invalidFilterDataException();
+    }
+
+    const { field, operator, value } = filter;
+
+    if (
+      typeof field !== 'string' ||
+      !FIND_ALL_FILTER_FIELDS.has(field) ||
+      typeof operator !== 'string'
+    ) {
+      throw this.invalidFilterDataException();
+    }
+
+    const normalizedOperator = operator.toLowerCase() as AssetFilterOperator;
+
+    switch (normalizedOperator) {
+      case 'eq': {
+        const normalizedValue = this.normalizeFieldValue(field, value);
+        return { [field]: normalizedValue } as Prisma.MntAssetWhereInput;
+      }
+      case 'like': {
+        if (!STRING_FIELDS.has(field) || typeof value !== 'string') {
+          throw this.invalidFilterDataException();
+        }
+        return {
+          [field]: { contains: value },
+        } as Prisma.MntAssetWhereInput;
+      }
+      case 'gt': {
+        const normalizedValue = this.normalizeComparableFieldValue(field, value);
+        return {
+          [field]: { gt: normalizedValue },
+        } as Prisma.MntAssetWhereInput;
+      }
+      case 'lt': {
+        const normalizedValue = this.normalizeComparableFieldValue(field, value);
+        return {
+          [field]: { lt: normalizedValue },
+        } as Prisma.MntAssetWhereInput;
+      }
+      case 'in': {
+        if (!Array.isArray(value)) {
+          throw this.invalidFilterDataException();
+        }
+        const normalizedValues = value.map((item) =>
+          this.normalizeFieldValue(field, item),
+        );
+        return {
+          [field]: { in: normalizedValues },
+        } as Prisma.MntAssetWhereInput;
+      }
+      default:
+        throw this.invalidFilterDataException();
+    }
+  }
+
+  private normalizeFieldValue(
+    field: string,
+    value: unknown,
+  ): string | number | Date {
+    if (INT_FIELDS.has(field)) {
+      if (typeof value === 'number' && Number.isInteger(value)) {
+        return value;
+      }
+
+      if (typeof value === 'string' && value.trim() !== '') {
+        const parsed = parseInt(value, 10);
+        if (!Number.isNaN(parsed)) {
+          return parsed;
+        }
+      }
+
+      throw this.invalidFilterDataException();
+    }
+
+    if (DATE_FIELDS.has(field)) {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value;
+      }
+
+      if (typeof value === 'string') {
+        const parsedDate = new Date(value);
+        if (!Number.isNaN(parsedDate.getTime())) {
+          return parsedDate;
+        }
+      }
+
+      throw this.invalidFilterDataException();
+    }
+
+    if (typeof value !== 'string') {
+      throw this.invalidFilterDataException();
+    }
+
+    return value;
+  }
+
+  private normalizeComparableFieldValue(
+    field: string,
+    value: unknown,
+  ): number | Date {
+    if (!DATE_FIELDS.has(field) && !INT_FIELDS.has(field)) {
+      throw this.invalidFilterDataException();
+    }
+
+    const normalized = this.normalizeFieldValue(field, value);
+    if (typeof normalized === 'string') {
+      throw this.invalidFilterDataException();
+    }
+
+    return normalized;
+  }
+
+  private parsePaginationValue(value?: unknown): number | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+
+    if (typeof value !== 'number' && typeof value !== 'string') {
+      throw this.invalidFilterDataException();
+    }
+
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+      throw this.invalidFilterDataException();
+    }
+
+    return parsed;
+  }
+
+  private invalidFilterDataException(): RpcException {
+    return new RpcException({
+      status: 400,
+      message: INVALID_FILTER_DATA_MESSAGE,
+    });
   }
 
   async update(dto: UpdateAssetDto) {
