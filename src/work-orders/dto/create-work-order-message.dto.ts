@@ -6,6 +6,7 @@ import {
   ValidateNested,
   IsArray,
   IsIn,
+  IsInt,
 } from "class-validator";
 import { Type } from "class-transformer";
 import { CreateWoOperationDto } from "./create-wo-operation.dto";
@@ -67,6 +68,60 @@ export class CreateWorkOrderMessageDto {
 
   @IsOptional()
   needByDate?: Date;
+
+  @IsOptional()
+  @IsInt()
+  oldId?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  addAttribute1?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  addAttribute2?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  addAttribute3?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  addAttribute4?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  addAttribute5?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  addAttribute6?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  addAttribute7?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  addAttribute8?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  addAttribute9?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(254)
+  addAttribute10?: string;
 
   @IsString()
   @IsNotEmpty()

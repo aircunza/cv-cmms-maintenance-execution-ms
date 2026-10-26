@@ -106,6 +106,17 @@ These fields are injected by the gateway and SHALL NOT be provided by the client
 | workDefinitionCode    | string          | -       | Work definition code.                               |
 | schedulingMethod      | string          | -       | Scheduling method.                                  |
 | needByDate            | Date (ISO 8601) | -       | Date by which the work order needs to be completed. |
+| oldId                 | integer         | null    | Legacy ID from previous system.                     |
+| addAttribute1         | string (max 254)| null    | Custom additional attribute 1.                      |
+| addAttribute2         | string (max 254)| null    | Custom additional attribute 2.                      |
+| addAttribute3         | string (max 254)| null    | Custom additional attribute 3.                      |
+| addAttribute4         | string (max 254)| null    | Custom additional attribute 4.                      |
+| addAttribute5         | string (max 254)| null    | Custom additional attribute 5.                      |
+| addAttribute6         | string (max 254)| null    | Custom additional attribute 6.                      |
+| addAttribute7         | string (max 254)| null    | Custom additional attribute 7.                      |
+| addAttribute8         | string (max 254)| null    | Custom additional attribute 8.                      |
+| addAttribute9         | string (max 254)| null    | Custom additional attribute 9.                      |
+| addAttribute10        | string (max 254)| null    | Custom additional attribute 10.                     |
 
 #### Operation Object Structure
 

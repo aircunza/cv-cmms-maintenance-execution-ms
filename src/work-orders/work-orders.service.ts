@@ -434,6 +434,17 @@ export class WorkOrdersService {
             totalSupplierHours,
             actualStartDate: woActualStartDate,
             actualCompletionDate: woActualCompletionDate,
+            oldId: dto.oldId,
+            addAttribute1: dto.addAttribute1,
+            addAttribute2: dto.addAttribute2,
+            addAttribute3: dto.addAttribute3,
+            addAttribute4: dto.addAttribute4,
+            addAttribute5: dto.addAttribute5,
+            addAttribute6: dto.addAttribute6,
+            addAttribute7: dto.addAttribute7,
+            addAttribute8: dto.addAttribute8,
+            addAttribute9: dto.addAttribute9,
+            addAttribute10: dto.addAttribute10,
           },
         });
 
@@ -603,6 +614,17 @@ export class WorkOrdersService {
       closedDate: wo.closedDate,
       canceledDate: wo.canceledDate,
       canceledReason: wo.canceledReason,
+      oldId: wo.oldId,
+      addAttribute1: wo.addAttribute1,
+      addAttribute2: wo.addAttribute2,
+      addAttribute3: wo.addAttribute3,
+      addAttribute4: wo.addAttribute4,
+      addAttribute5: wo.addAttribute5,
+      addAttribute6: wo.addAttribute6,
+      addAttribute7: wo.addAttribute7,
+      addAttribute8: wo.addAttribute8,
+      addAttribute9: wo.addAttribute9,
+      addAttribute10: wo.addAttribute10,
       operations: operations.map((op: any) => {
         const hrUsages =
           op.hrUsages?.filter(
@@ -1084,6 +1106,39 @@ export class WorkOrdersService {
       }
       if (dto.workOrderPriority !== undefined) {
         updateData.workOrderPriority = dto.workOrderPriority;
+      }
+      if (dto.oldId !== undefined) {
+        updateData.oldId = dto.oldId;
+      }
+      if (dto.addAttribute1 !== undefined) {
+        updateData.addAttribute1 = dto.addAttribute1;
+      }
+      if (dto.addAttribute2 !== undefined) {
+        updateData.addAttribute2 = dto.addAttribute2;
+      }
+      if (dto.addAttribute3 !== undefined) {
+        updateData.addAttribute3 = dto.addAttribute3;
+      }
+      if (dto.addAttribute4 !== undefined) {
+        updateData.addAttribute4 = dto.addAttribute4;
+      }
+      if (dto.addAttribute5 !== undefined) {
+        updateData.addAttribute5 = dto.addAttribute5;
+      }
+      if (dto.addAttribute6 !== undefined) {
+        updateData.addAttribute6 = dto.addAttribute6;
+      }
+      if (dto.addAttribute7 !== undefined) {
+        updateData.addAttribute7 = dto.addAttribute7;
+      }
+      if (dto.addAttribute8 !== undefined) {
+        updateData.addAttribute8 = dto.addAttribute8;
+      }
+      if (dto.addAttribute9 !== undefined) {
+        updateData.addAttribute9 = dto.addAttribute9;
+      }
+      if (dto.addAttribute10 !== undefined) {
+        updateData.addAttribute10 = dto.addAttribute10;
       }
 
       const updated = await this.prisma.mntWorkOrder.update({

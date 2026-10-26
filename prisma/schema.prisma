@@ -210,6 +210,17 @@ model MntWorkOrder {
   enableOracleWorkOrder String    @default("N") @map("enable_oracle_work_order") @db.Char(1)
   totalManHours         Float?    @map("total_man_hours")
   totalSupplierHours    Float?    @map("total_supplier_hours")
+  oldId                 Int?      @map("old_id")
+  addAttribute1         String?   @map("add_attribute_1") @db.NVarChar(254)
+  addAttribute2         String?   @map("add_attribute_2") @db.NVarChar(254)
+  addAttribute3         String?   @map("add_attribute_3") @db.NVarChar(254)
+  addAttribute4         String?   @map("add_attribute_4") @db.NVarChar(254)
+  addAttribute5         String?   @map("add_attribute_5") @db.NVarChar(254)
+  addAttribute6         String?   @map("add_attribute_6") @db.NVarChar(254)
+  addAttribute7         String?   @map("add_attribute_7") @db.NVarChar(254)
+  addAttribute8         String?   @map("add_attribute_8") @db.NVarChar(254)
+  addAttribute9         String?   @map("add_attribute_9") @db.NVarChar(254)
+  addAttribute10        String?   @map("add_attribute_10") @db.NVarChar(254)
   createdAt             DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
   updatedAt             DateTime? @map("updated_at") @db.DateTimeOffset
 
