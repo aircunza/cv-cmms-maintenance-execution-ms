@@ -48,12 +48,12 @@ export class HumanResourcesService {
     }
   }
 
-  async findOne(resourceCode: string, organizationCode: string) {
+  async findOne(resourceCode: string, organizationCode?: string) {
     try {
       const hr = await this.prisma.mntHumanResource.findFirst({
         where: {
           resourceCode,
-          organizationCode,
+          ...(organizationCode ? { organizationCode } : {}),
         },
       });
 
