@@ -32,6 +32,8 @@ const FIND_ALL_FILTER_FIELDS = new Set([
   "organizationCode",
   "workCenterCode",
   "workAreaCode",
+  "assignedToCode",
+  "assignedToName",
   "createdAt",
   "actualStartDate",
   "actualCompletionDate",
@@ -49,6 +51,8 @@ const STRING_FIELDS = new Set([
   "organizationCode",
   "workCenterCode",
   "workAreaCode",
+  "assignedToCode",
+  "assignedToName",
 ]);
 
 const DATE_FIELDS = new Set([
@@ -445,6 +449,8 @@ export class WorkOrdersService {
             addAttribute8: dto.addAttribute8,
             addAttribute9: dto.addAttribute9,
             addAttribute10: dto.addAttribute10,
+            assignedToCode: dto.assignedToCode,
+            assignedToName: dto.assignedToName,
           },
         });
 
@@ -483,6 +489,8 @@ export class WorkOrdersService {
               reviewerComment: op.reviewerComment,
               pendingTask: op.pendingTask,
               pendingTaskStatus: op.pendingTaskStatus,
+              assignedToCode: op.assignedToCode,
+              assignedToName: op.assignedToName,
               createdBy: op.createdBy,
               createdByName: dto.actorName,
             },
@@ -625,6 +633,8 @@ export class WorkOrdersService {
       addAttribute8: wo.addAttribute8,
       addAttribute9: wo.addAttribute9,
       addAttribute10: wo.addAttribute10,
+      assignedToCode: wo.assignedToCode,
+      assignedToName: wo.assignedToName,
       operations: operations.map((op: any) => {
         const hrUsages =
           op.hrUsages?.filter(
@@ -661,6 +671,8 @@ export class WorkOrdersService {
           reviewerComment: op.reviewerComment,
           pendingTask: op.pendingTask,
           pendingTaskStatus: op.pendingTaskStatus,
+          assignedToCode: op.assignedToCode,
+          assignedToName: op.assignedToName,
           createdBy: op.createdBy,
           createdByName: op.createdByName,
           createdAt: op.createdAt,
@@ -1139,6 +1151,12 @@ export class WorkOrdersService {
       }
       if (dto.addAttribute10 !== undefined) {
         updateData.addAttribute10 = dto.addAttribute10;
+      }
+      if (dto.assignedToCode !== undefined) {
+        updateData.assignedToCode = dto.assignedToCode;
+      }
+      if (dto.assignedToName !== undefined) {
+        updateData.assignedToName = dto.assignedToName;
       }
 
       const updated = await this.prisma.mntWorkOrder.update({

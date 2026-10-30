@@ -123,6 +123,16 @@ export class CreateWorkOrderMessageDto {
   @MaxLength(254)
   addAttribute10?: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  assignedToCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  assignedToName?: string;
+
   @IsString()
   @IsNotEmpty()
   actorId!: string;

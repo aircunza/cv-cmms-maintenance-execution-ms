@@ -12,7 +12,7 @@ Creates a new Work Order with one or more operations. Each operation can include
 
 ### Operation Fields (within Work Order creation)
 
-When creating a Work Order, the `operations` array can include the following optional fields for review and pending task tracking:
+When creating a Work Order, the `operations` array can include the following optional fields for review, pending task and assignment tracking (`assignedToCode` and `assignedToName`, max 255 each, are also accepted here):
 
 | Field                | Type              | Description                                                                                 |
 | -------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
@@ -65,6 +65,8 @@ Creates a new operation within an existing Work Order. Each operation MUST conta
 | maintainableItem     | string (max 370)  | Maintainable item identifier.                                                               |
 | operationCategory    | string            | Operation category.                                                                         |
 | materials            | array             | Array of material objects.                                                                  |
+| assignedToCode       | string (max 255)  | Code of the user assigned to the operation.                                                 |
+| assignedToName       | string (max 255)  | Name of the user assigned to the operation.                                                 |
 | actualStartDate      | string (ISO 8601) | Operation start date. Validated if provided; the stored value is derived from resources.    |
 | actualCompletionDate | string (ISO 8601) | Operation completion date. Validated if provided; the stored value is derived from resources. |
 | reviewedByCode       | string (max 254)  | Code of the user who reviewed the operation.                                                |
@@ -247,6 +249,8 @@ Partially updates editable fields of an existing operation. Does NOT allow manua
 | reviewedByName       | string (max 254)        | Name of the user who reviewed the operation. |
 | reviewedAt           | string (ISO 8601)       | Timestamp of when the operation was reviewed. |
 | reviewerComment      | string (max 254)        | Comment from the reviewer.    |
+| assignedToCode       | string (max 255)        | Updated code of the assigned user. |
+| assignedToName       | string (max 255)        | Updated name of the assigned user. |
 | pendingTask          | string (max 1370)       | Description of a pending task. |
 | pendingTaskStatus    | string (max 40)         | Status of the pending task. One of: "UNRELEASED", "RELEASED", "IN_PROCESS", "COMPLETED", "NOT_DONE", "CANCELED", "ON_HOLD". |
 

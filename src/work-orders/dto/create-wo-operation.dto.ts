@@ -107,4 +107,14 @@ export class CreateWoOperationDto {
   @MaxLength(40)
   @IsIn(['RELEASED', 'COMPLETED', 'IN_PROCESS', 'UNRELEASED', 'ON_HOLD', 'CANCELED', 'NOT_DONE'])
   pendingTaskStatus?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  assignedToCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  assignedToName?: string;
 }

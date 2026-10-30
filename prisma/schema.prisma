@@ -221,6 +221,8 @@ model MntWorkOrder {
   addAttribute8         String?   @map("add_attribute_8") @db.NVarChar(254)
   addAttribute9         String?   @map("add_attribute_9") @db.NVarChar(254)
   addAttribute10        String?   @map("add_attribute_10") @db.NVarChar(254)
+  assignedToCode        String?   @map("assigned_to_code") @db.NVarChar(255)
+  assignedToName        String?   @map("assigned_to_name") @db.NVarChar(255)
   createdAt             DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
   updatedAt             DateTime? @map("updated_at") @db.DateTimeOffset
 
@@ -275,6 +277,8 @@ model MntWoOperation {
   reviewerComment       String?   @map("reviewer_comment") @db.NVarChar(254)
   pendingTask           String?   @map("pending_task") @db.NVarChar(1370)
   pendingTaskStatus     String?   @map("pending_task_status") @db.NVarChar(40)
+  assignedToCode        String?   @map("assigned_to_code") @db.NVarChar(255)
+  assignedToName        String?   @map("assigned_to_name") @db.NVarChar(255)
   createdAt             DateTime? @default(now()) @map("created_at") @db.DateTimeOffset
   updatedAt             DateTime? @map("updated_at") @db.DateTimeOffset
   reviewedAt            DateTime? @map("reviewed_at") @db.DateTimeOffset

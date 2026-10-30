@@ -117,6 +117,8 @@ These fields are injected by the gateway and SHALL NOT be provided by the client
 | addAttribute8         | string (max 254)| null    | Custom additional attribute 8.                      |
 | addAttribute9         | string (max 254)| null    | Custom additional attribute 9.                      |
 | addAttribute10        | string (max 254)| null    | Custom additional attribute 10.                     |
+| assignedToCode        | string (max 255)| null    | Code of the user assigned to the work order. camelCase in JSON, `assigned_to_code` in DB. |
+| assignedToName        | string (max 255)| null    | Name of the user assigned to the work order. camelCase in JSON, `assigned_to_name` in DB. |
 
 #### Operation Object Structure
 
@@ -147,6 +149,8 @@ Each operation in the `operations` array must contain:
 | subunit                    | string  | Subunit of measure (max 370). |
 | maintainableItem           | string  | Maintainable item identifier (max 370). |
 | operationCategory          | string  | Operation category.           |
+| assignedToCode             | string (max 255) | Code of the user assigned to the operation. |
+| assignedToName             | string (max 255) | Name of the user assigned to the operation. |
 
 #### Resource Object Structure
 
@@ -921,6 +925,8 @@ No legacy top-level query fields are supported. Filtering by `assetCode`, `woSta
 - `releasedDate`
 - `closedDate`
 - `canceledDate`
+- `assignedToCode` (supports `eq`, `like`, `in`)
+- `assignedToName` (supports `eq`, `like`, `in`)
 
 #### Example Request Payload
 
@@ -1194,6 +1200,8 @@ Allowed roles for Oracle operations:
 | workOrderType        | string                      | 30         | Updated work order type (e.g., "Planned", "Not Planned"). |
 | workOrderSubType     | string                      | 30         | Updated work order sub-type.                              |
 | workOrderPriority    | string ("1"\|"2"\|"3"\|"4") | -          | Updated priority level.                                   |
+| assignedToCode       | string                      | 255        | Updated code of the assigned user.                        |
+| assignedToName       | string                      | 255        | Updated name of the assigned user.                        |
 
 #### Example Request Payload
 

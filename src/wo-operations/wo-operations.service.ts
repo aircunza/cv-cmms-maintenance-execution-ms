@@ -260,6 +260,8 @@ export class WoOperationsService {
             reviewerComment: dto.reviewerComment,
             pendingTask: dto.pendingTask,
             pendingTaskStatus: dto.pendingTaskStatus,
+            assignedToCode: dto.assignedToCode,
+            assignedToName: dto.assignedToName,
             createdBy: dto.actorId,
             createdByName: dto.actorName,
           },
@@ -380,6 +382,12 @@ export class WoOperationsService {
           ...(dto.operationStatus
             ? { operationStatus: dto.operationStatus }
             : {}),
+          ...(dto.assignedToCode
+            ? { assignedToCode: { contains: dto.assignedToCode } }
+            : {}),
+          ...(dto.assignedToName
+            ? { assignedToName: { contains: dto.assignedToName } }
+            : {}),
         },
         orderBy: { operationSeqNumber: "asc" },
       });
@@ -493,6 +501,12 @@ export class WoOperationsService {
             : {}),
           ...(dto.pendingTaskStatus !== undefined
             ? { pendingTaskStatus: dto.pendingTaskStatus }
+            : {}),
+          ...(dto.assignedToCode !== undefined
+            ? { assignedToCode: dto.assignedToCode }
+            : {}),
+          ...(dto.assignedToName !== undefined
+            ? { assignedToName: dto.assignedToName }
             : {}),
           updatedBy: dto.actorId,
           updatedByName: dto.actorName,
