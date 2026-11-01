@@ -187,19 +187,20 @@ export class WoOperationsService {
         }),
       );
 
-      if (dto.assetCode) {
-        const asset = await this.prisma.mntAsset.findFirst({
-          where: { assetCode: dto.assetCode, isActive: "Y" },
+      const asset = dto.assetCode
+        ? await this.prisma.mntAsset.findFirst({
+            where: { assetCode: dto.assetCode, isActive: "Y" },
+          })
+        : null;
+
+      if (dto.assetCode && !asset) {
+        throw new RpcException({
+          status: 404,
+          message: "Asset not found or inactive",
         });
-        if (!asset) {
-          throw new RpcException({
-            status: 404,
-            message: "Asset not found or inactive",
-          });
-        }
-        if (!dto.assetShortDescription) {
-          dto.assetShortDescription = asset.assetShortDescription ?? undefined;
-        }
+      }
+      if (asset && !dto.assetShortDescription) {
+        dto.assetShortDescription = asset.assetShortDescription ?? undefined;
       }
 
       const calculatedActualHours = validatedResources.reduce(
@@ -245,15 +246,17 @@ export class WoOperationsService {
             actualStartDate: calculatedStartDate,
             actualCompletionDate: calculatedCompletionDate,
             actualHours: calculatedActualHours,
-            workCenterCode: dto.workCenterCode,
-            workCenterDescription: dto.workCenterDescription,
-            centerCostCode: dto.centerCostCode,
-            workAreaCode: dto.workAreaCode,
-            workAreaDescription: dto.workAreaDescription,
-            sector: dto.sector,
-            subsector: dto.subsector,
+            // Centro de costo, área, sector y organización se infieren del asset
+            // (no se aceptan desde el request). Sin asset quedan en NULL.
+            workCenterCode: asset?.workCenterCode ?? null,
+            workCenterDescription: asset?.workCenterDescription ?? null,
+            centerCostCode: asset?.centerCostCode ?? null,
+            workAreaCode: asset?.workAreaCode ?? null,
+            workAreaDescription: asset?.workAreaDescription ?? null,
+            sector: asset?.sector ?? null,
+            subsector: asset?.subsector ?? null,
             organizationCode: dto.organizationCode,
-            organizationName: dto.organizationName,
+            organizationName: asset?.organizationName ?? null,
             reviewedByCode: dto.reviewedByCode,
             reviewedByName: dto.reviewedByName,
             reviewedAt: dto.reviewedAt,
