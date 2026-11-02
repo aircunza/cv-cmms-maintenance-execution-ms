@@ -1,6 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { RpcException } from "@nestjs/microservices";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { ClientProxy, RpcException } from "@nestjs/microservices";
 import { PrismaService } from "src/prisma.service";
+import { NATS_SERVICE } from "src/config/services";
+import { OracleWorkOrderPolicy } from "src/work-orders/policies";
+import { OracleEquivalences } from "src/common/oracle";
 import {
   CreateWoOperationDto,
   UpdateWoOperationDto,
@@ -34,7 +37,11 @@ function isValidIsoDate(value: string): boolean {
 export class WoOperationsService {
   private readonly logger = new Logger(WoOperationsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(NATS_SERVICE) private readonly natsClient: ClientProxy,
+    private readonly oraclePolicy: OracleWorkOrderPolicy,
+  ) {}
 
   async create(
     dto: CreateWoOperationDto & { actorId: string; actorName: string },
@@ -350,11 +357,73 @@ export class WoOperationsService {
         });
       });
 
+      if (
+        workOrder.enableOracleWorkOrder === "Y" &&
+        this.oraclePolicy.isOracleEnabled() &&
+        operation
+      ) {
+        await this.emitOperationCreatedToOracle(operation, workOrder.workOrderCode);
+      }
+
       return { operation };
     } catch (error) {
       if (error instanceof RpcException) throw error;
       throw new RpcException({ status: 500, message: "Internal server error" });
     }
+  }
+
+  // Emite wo.operation.created a oracle-fusion-integration-ms.
+  // El oclWoId no se envía: integración lo resuelve desde oracle_work_orders.
+  private async emitOperationCreatedToOracle(
+    operation: {
+      operationCode: bigint;
+      operationName: string | null;
+      operationDescription: string | null;
+      operationSeqNumber: number | null;
+      operationType: string | null;
+      actualStartDate: Date | null;
+      actualCompletionDate: Date | null;
+      workOrderCode: bigint;
+    },
+    workOrderCode: bigint,
+  ) {
+    const maxSeq = await this.prisma.mntWoOperation.aggregate({
+      _max: { operationSeqNumber: true },
+      where: {
+        workOrderCode,
+        operationStatus: { not: OP_STATUS.CANCELED },
+      },
+    });
+    const isLastOperation =
+      (operation.operationSeqNumber ?? 0) >= (maxSeq._max.operationSeqNumber ?? 0);
+
+    const event = {
+      payload: {
+        enableOracleWorkOrder: "Y",
+        workOrderCode: Number(workOrderCode),
+        operationCode: Number(operation.operationCode),
+        isLastOperation,
+        operation: {
+          operationName: operation.operationName ?? undefined,
+          operationDescription: operation.operationDescription ?? undefined,
+          operationSeqNumber: operation.operationSeqNumber ?? undefined,
+          operationType: operation.operationType ?? undefined,
+          oracleOperationType:
+            OracleEquivalences.WorkOrderOperation.OperationType[
+              operation.operationType as keyof typeof OracleEquivalences.WorkOrderOperation.OperationType
+            ] ?? "IN_HOUSE",
+          workCenterCode:
+            OracleEquivalences.WorkCenterCode.MaintenanceDepartment,
+          actualStartDate: operation.actualStartDate?.toISOString(),
+          actualCompletionDate: operation.actualCompletionDate?.toISOString(),
+        },
+      },
+    };
+
+    this.natsClient.emit("wo.operation.created", event).subscribe({
+      error: (err: unknown) =>
+        this.logger.error("Failed to emit wo.operation.created", err),
+    });
   }
 
   async findOne(operationCode: number) {
