@@ -1,6 +1,8 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { RpcException } from "@nestjs/microservices";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { ClientProxy, RpcException } from "@nestjs/microservices";
 import { PrismaService } from "src/prisma.service";
+import { NATS_SERVICE } from "src/config/services";
+import { OracleWorkOrderPolicy } from "src/work-orders/policies";
 import {
   CreateOperationMaterialDto,
   UpdateOperationMaterialDto,
@@ -11,7 +13,11 @@ import {
 export class OperationMaterialsService {
   private readonly logger = new Logger(OperationMaterialsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(NATS_SERVICE) private readonly natsClient: ClientProxy,
+    private readonly oraclePolicy: OracleWorkOrderPolicy,
+  ) {}
 
   async create(
     dto: CreateOperationMaterialDto & { actorId: string; actorName: string; operationCode: number },
@@ -58,6 +64,35 @@ export class OperationMaterialsService {
           createdByName: dto.actorName,
         },
       });
+
+      const workOrder = await this.prisma.mntWorkOrder.findFirst({
+        where: { workOrderCode: operation.workOrderCode },
+      });
+
+      if (
+        workOrder?.enableOracleWorkOrder === "Y" &&
+        this.oraclePolicy.isOracleEnabled()
+      ) {
+        this.natsClient
+          .emit("operation.material.created", {
+            payload: {
+              enableOracleWorkOrder: "Y",
+              workOrderCode: Number(operation.workOrderCode),
+              operationCode: Number(dto.operationCode),
+              requiredDate: operation.actualStartDate?.toISOString(),
+              material: {
+                materialSequenceNumber: dto.materialSequenceNumber,
+                materialCode: dto.materialCode,
+                quantity,
+                supplyType: dto.supplyType ?? "1",
+              },
+            },
+          })
+          .subscribe({
+            error: (err: unknown) =>
+              this.logger.error("Failed to emit operation.material.created", err),
+          });
+      }
 
       return { materialUsage };
     } catch (error) {
