@@ -182,16 +182,38 @@ export class WoOperationsService {
         }
       }
 
+      // Regla Oracle: recursos con la misma resourceSequenceNumber son simultáneos
+      // y exactamente uno debe ser principal. Se calcula en backend (el principal
+      // del request se ignora): primer recurso de cada secuencia con más de uno;
+      // secuencias con un solo recurso quedan en 'N'.
+      const principalBySequence = new Map<number, number>();
+      dto.resources.forEach((res, index) => {
+        if (!principalBySequence.has(res.resourceSequenceNumber!)) {
+          principalBySequence.set(res.resourceSequenceNumber!, index);
+        }
+      });
+      const sequenceCount = new Map<number, number>();
+      for (const res of dto.resources) {
+        const seq = res.resourceSequenceNumber!;
+        sequenceCount.set(seq, (sequenceCount.get(seq) ?? 0) + 1);
+      }
+
       const validatedResources: ValidatedResource[] = dto.resources.map(
-        (res) => ({
-          resourceCode: res.resourceCode!,
-          resourceSequenceNumber: res.resourceSequenceNumber!,
-          actualHours: res.actualHours!,
-          actualStartDate: res.actualStartDate!,
-          actualCompletionDate: res.actualCompletionDate!,
-          principalFlag: res.principalFlag,
-          hourlyCost: res.hourlyCost,
-        }),
+        (res, index) => {
+          const seq = res.resourceSequenceNumber!;
+          const isPrincipal =
+            (sequenceCount.get(seq) ?? 0) > 1 &&
+            principalBySequence.get(seq) === index;
+          return {
+            resourceCode: res.resourceCode!,
+            resourceSequenceNumber: seq,
+            actualHours: res.actualHours!,
+            actualStartDate: res.actualStartDate!,
+            actualCompletionDate: res.actualCompletionDate!,
+            principalFlag: isPrincipal ? "Y" : "N",
+            hourlyCost: res.hourlyCost,
+          };
+        },
       );
 
       const asset = dto.assetCode
@@ -384,6 +406,15 @@ export class WoOperationsService {
       actualStartDate: Date | null;
       actualCompletionDate: Date | null;
       workOrderCode: bigint;
+      hrUsages?: {
+        resourceCode: string;
+        resourceSequenceNumber: number | null;
+        actualHours: number | null;
+        principalFlag: string | null;
+        actualStartDate: Date | null;
+        actualCompletionDate: Date | null;
+        status: string;
+      }[];
     },
     workOrderCode: bigint,
   ) {
@@ -417,6 +448,16 @@ export class WoOperationsService {
           actualStartDate: operation.actualStartDate?.toISOString(),
           actualCompletionDate: operation.actualCompletionDate?.toISOString(),
         },
+        resources: (operation.hrUsages ?? [])
+          .filter((hr) => hr.status !== "CANCELED")
+          .map((hr) => ({
+            resourceCode: hr.resourceCode,
+            resourceSequenceNumber: hr.resourceSequenceNumber ?? undefined,
+            actualHours: hr.actualHours ?? undefined,
+            principalFlag: hr.principalFlag ?? "N",
+            actualStartDate: hr.actualStartDate?.toISOString(),
+            actualCompletionDate: hr.actualCompletionDate?.toISOString(),
+          })),
       },
     };
 
