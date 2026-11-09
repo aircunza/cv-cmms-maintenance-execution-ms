@@ -31,6 +31,17 @@ export class WoOperationsController {
     return this.woOperationsService.findAll(dto);
   }
 
+  @MessagePattern("wo.operation.find.all.global")
+  findAllGlobal(
+    @Payload()
+    dto: FindAllWoOperationDto & {
+      organizationCodes: string[];
+      userPermissions: string[];
+    },
+  ) {
+    return this.woOperationsService.findAllForOrganizations(dto);
+  }
+
   @MessagePattern("wo.operation.update")
   update(
     @Payload()
@@ -54,7 +65,14 @@ export class WoOperationsController {
       actorName: string;
     },
   ) {
-    const { operationCode, workOrderCode, organizationCode, actorId, actorName, ...cancelDto } = dto;
+    const {
+      operationCode,
+      workOrderCode,
+      organizationCode,
+      actorId,
+      actorName,
+      ...cancelDto
+    } = dto;
     return this.woOperationsService.cancel(
       operationCode,
       workOrderCode,

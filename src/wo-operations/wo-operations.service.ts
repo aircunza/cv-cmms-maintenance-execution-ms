@@ -621,6 +621,56 @@ export class WoOperationsService {
     }
   }
 
+  // Operaciones de todas las work orders de las organizaciones permitidas.
+  // El gateway calcula organizationCodes (orgs donde el usuario tiene
+  // mnt.work.orders.view) y envia userPermissions.
+  async findAllForOrganizations(
+    dto: FindAllWoOperationDto & {
+      organizationCodes: string[];
+      userPermissions: string[];
+    },
+  ) {
+    try {
+      if (
+        !Array.isArray(dto.userPermissions) ||
+        !dto.userPermissions.includes("mnt.work.orders.view")
+      ) {
+        throw new RpcException({ status: 403, message: "MISSING_PERMISSION" });
+      }
+
+      if (
+        !Array.isArray(dto.organizationCodes) ||
+        dto.organizationCodes.length === 0
+      ) {
+        throw new RpcException({ status: 403, message: "MISSING_PERMISSION" });
+      }
+
+      const scope: Prisma.MntWoOperationWhereInput = {
+        organizationCode: { in: dto.organizationCodes },
+      };
+      const filterWhere = this.buildFindAllWhere({
+        ...dto,
+        workOrderCode: undefined,
+      });
+      const where: Prisma.MntWoOperationWhereInput = {
+        AND: [scope, filterWhere],
+      };
+      const orderBy = this.buildFindAllOrder(dto.order);
+      const take = this.parsePaginationValue(dto.limit);
+      const skip = this.parsePaginationValue(dto.offset);
+
+      const [operations, total] = await this.prisma.$transaction([
+        this.prisma.mntWoOperation.findMany({ where, orderBy, take, skip }),
+        this.prisma.mntWoOperation.count({ where }),
+      ]);
+
+      return { operations, total };
+    } catch (error) {
+      if (error instanceof RpcException) throw error;
+      throw new RpcException({ status: 500, message: "Internal server error" });
+    }
+  }
+
   private buildFindAllWhere(
     dto: FindAllWoOperationDto,
   ): Prisma.MntWoOperationWhereInput {
