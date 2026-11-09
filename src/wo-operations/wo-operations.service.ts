@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ClientProxy, RpcException } from "@nestjs/microservices";
+import type { Prisma } from "generated/prisma/client";
 import { PrismaService } from "src/prisma.service";
 import { NATS_SERVICE } from "src/config/services";
 import { OracleWorkOrderPolicy } from "src/work-orders/policies";
@@ -9,6 +10,7 @@ import {
   UpdateWoOperationDto,
   CancelWoOperationDto,
   FindAllWoOperationDto,
+  WoOperationFilterDto,
 } from "./dto";
 import {
   OP_STATUS,
@@ -17,6 +19,117 @@ import {
 } from "src/common/enums";
 
 const VALID_OP_STATUSES = Object.values(OP_STATUS);
+
+// Todas las columnas de mnt_wo_operations.
+const FIND_ALL_FILTER_FIELDS = new Set([
+  "operationCode",
+  "operationName",
+  "operationDescription",
+  "operationSeqNumber",
+  "workOrderCode",
+  "assetCode",
+  "assetShortDescription",
+  "assetTreeId",
+  "unit",
+  "subunit",
+  "maintainableItem",
+  "specialtyType",
+  "operationCategory",
+  "operationSubType",
+  "operationStatus",
+  "operationType",
+  "plannedStartDate",
+  "plannedCompletionDate",
+  "actualStartDate",
+  "actualCompletionDate",
+  "plannedHours",
+  "actualHours",
+  "oclWorkOrderId",
+  "oclWorkOrderNumber",
+  "workCenterCode",
+  "workCenterDescription",
+  "centerCostCode",
+  "workAreaCode",
+  "workAreaDescription",
+  "sector",
+  "subsector",
+  "organizationCode",
+  "organizationName",
+  "createdBy",
+  "createdByName",
+  "updatedBy",
+  "updatedByName",
+  "reviewedByCode",
+  "reviewedByName",
+  "reviewerComment",
+  "pendingTask",
+  "pendingTaskStatus",
+  "assignedToCode",
+  "assignedToName",
+  "createdAt",
+  "updatedAt",
+  "reviewedAt",
+]);
+
+// Campos String: unicos sobre los que aplica `like` (Prisma `contains`).
+const STRING_FIELDS = new Set([
+  "operationName",
+  "operationDescription",
+  "assetCode",
+  "assetShortDescription",
+  "unit",
+  "subunit",
+  "maintainableItem",
+  "specialtyType",
+  "operationCategory",
+  "operationSubType",
+  "operationStatus",
+  "operationType",
+  "oclWorkOrderNumber",
+  "workCenterCode",
+  "workCenterDescription",
+  "workAreaCode",
+  "workAreaDescription",
+  "sector",
+  "subsector",
+  "organizationCode",
+  "organizationName",
+  "createdBy",
+  "createdByName",
+  "updatedBy",
+  "updatedByName",
+  "reviewedByCode",
+  "reviewedByName",
+  "reviewerComment",
+  "pendingTask",
+  "pendingTaskStatus",
+  "assignedToCode",
+  "assignedToName",
+]);
+
+const BIGINT_FIELDS = new Set([
+  "operationCode",
+  "workOrderCode",
+  "assetTreeId",
+  "oclWorkOrderId",
+]);
+const NUMBER_FIELDS = new Set([
+  "operationSeqNumber",
+  "centerCostCode",
+  "plannedHours",
+  "actualHours",
+]);
+const DATE_FIELDS = new Set([
+  "plannedStartDate",
+  "plannedCompletionDate",
+  "actualStartDate",
+  "actualCompletionDate",
+  "createdAt",
+  "updatedAt",
+  "reviewedAt",
+]);
+
+type WoOperationFilterOperator = "eq" | "like" | "gt" | "lt" | "in";
 
 type ValidatedResource = {
   resourceCode: string;
@@ -263,7 +376,8 @@ export class WoOperationsService {
             workOrderCode: BigInt(dto.workOrderCode),
             assetCode: dto.assetCode,
             assetShortDescription: dto.assetShortDescription,
-            assetTreeId: dto.assetTreeId !== undefined ? BigInt(dto.assetTreeId) : null,
+            assetTreeId:
+              dto.assetTreeId !== undefined ? BigInt(dto.assetTreeId) : null,
             unit: dto.unit,
             subunit: dto.subunit,
             maintainableItem: dto.maintainableItem,
@@ -384,7 +498,10 @@ export class WoOperationsService {
         this.oraclePolicy.isOracleEnabled() &&
         operation
       ) {
-        await this.emitOperationCreatedToOracle(operation, workOrder.workOrderCode);
+        await this.emitOperationCreatedToOracle(
+          operation,
+          workOrder.workOrderCode,
+        );
       }
 
       return { operation };
@@ -426,7 +543,8 @@ export class WoOperationsService {
       },
     });
     const isLastOperation =
-      (operation.operationSeqNumber ?? 0) >= (maxSeq._max.operationSeqNumber ?? 0);
+      (operation.operationSeqNumber ?? 0) >=
+      (maxSeq._max.operationSeqNumber ?? 0);
 
     const event = {
       payload: {
@@ -486,29 +604,218 @@ export class WoOperationsService {
 
   async findAll(dto: FindAllWoOperationDto) {
     try {
-      const operations = await this.prisma.mntWoOperation.findMany({
-        where: {
-          ...(dto.workOrderCode
-            ? { workOrderCode: BigInt(dto.workOrderCode) }
-            : {}),
-          ...(dto.assetCode ? { assetCode: { contains: dto.assetCode } } : {}),
-          ...(dto.operationStatus
-            ? { operationStatus: dto.operationStatus }
-            : {}),
-          ...(dto.assignedToCode
-            ? { assignedToCode: { contains: dto.assignedToCode } }
-            : {}),
-          ...(dto.assignedToName
-            ? { assignedToName: { contains: dto.assignedToName } }
-            : {}),
-        },
-        orderBy: { operationSeqNumber: "asc" },
-      });
+      const where = this.buildFindAllWhere(dto);
+      const orderBy = this.buildFindAllOrder(dto.order);
+      const take = this.parsePaginationValue(dto.limit);
+      const skip = this.parsePaginationValue(dto.offset);
 
-      return { operations, total: operations.length };
+      const [operations, total] = await this.prisma.$transaction([
+        this.prisma.mntWoOperation.findMany({ where, orderBy, take, skip }),
+        this.prisma.mntWoOperation.count({ where }),
+      ]);
+
+      return { operations, total };
     } catch (error) {
+      if (error instanceof RpcException) throw error;
       throw new RpcException({ status: 500, message: "Internal server error" });
     }
+  }
+
+  private buildFindAllWhere(
+    dto: FindAllWoOperationDto,
+  ): Prisma.MntWoOperationWhereInput {
+    const conditions: Prisma.MntWoOperationWhereInput[] = [];
+
+    if (dto.workOrderCode) {
+      conditions.push({ workOrderCode: BigInt(dto.workOrderCode) });
+    }
+    if (dto.assetCode) {
+      conditions.push({ assetCode: { contains: dto.assetCode } });
+    }
+    if (dto.operationStatus) {
+      conditions.push({ operationStatus: dto.operationStatus });
+    }
+    if (dto.assignedToCode) {
+      conditions.push({ assignedToCode: { contains: dto.assignedToCode } });
+    }
+    if (dto.assignedToName) {
+      conditions.push({ assignedToName: { contains: dto.assignedToName } });
+    }
+
+    if (dto.filters !== undefined) {
+      if (!Array.isArray(dto.filters)) {
+        throw this.invalidFilterDataException();
+      }
+      conditions.push(
+        ...dto.filters.map((filter) => this.mapFilterToWhereCondition(filter)),
+      );
+    }
+
+    return conditions.length > 0 ? { AND: conditions } : {};
+  }
+
+  private buildFindAllOrder(
+    order: FindAllWoOperationDto["order"],
+  ): Prisma.MntWoOperationOrderByWithRelationInput[] {
+    const defaultOrder: Prisma.MntWoOperationOrderByWithRelationInput[] = [
+      { operationSeqNumber: "asc" },
+      { operationCode: "asc" },
+    ];
+
+    if (order === undefined) {
+      return defaultOrder;
+    }
+
+    if (!Array.isArray(order)) {
+      throw this.invalidFilterDataException();
+    }
+
+    const mapped = order.map((criterion) => {
+      if (!Array.isArray(criterion) || criterion.length !== 2) {
+        throw this.invalidFilterDataException();
+      }
+
+      const [rawField, rawDirection] = criterion;
+      if (
+        typeof rawField !== "string" ||
+        !FIND_ALL_FILTER_FIELDS.has(rawField) ||
+        typeof rawDirection !== "string"
+      ) {
+        throw this.invalidFilterDataException();
+      }
+
+      const direction = rawDirection.toLowerCase();
+      if (direction !== "asc" && direction !== "desc") {
+        throw this.invalidFilterDataException();
+      }
+
+      return {
+        [rawField]: direction,
+      } as Prisma.MntWoOperationOrderByWithRelationInput;
+    });
+
+    return mapped.length > 0 ? mapped : defaultOrder;
+  }
+
+  private parsePaginationValue(value?: number): number | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+
+    if (!Number.isInteger(value) || value < 0) {
+      throw this.invalidFilterDataException();
+    }
+
+    return value;
+  }
+
+  private mapFilterToWhereCondition(
+    filter: WoOperationFilterDto,
+  ): Prisma.MntWoOperationWhereInput {
+    if (!filter || typeof filter !== "object") {
+      throw this.invalidFilterDataException();
+    }
+
+    const { field, operator, value } = filter;
+
+    if (
+      typeof field !== "string" ||
+      !FIND_ALL_FILTER_FIELDS.has(field) ||
+      typeof operator !== "string"
+    ) {
+      throw this.invalidFilterDataException();
+    }
+
+    const normalizedOperator =
+      operator.toLowerCase() as WoOperationFilterOperator;
+
+    switch (normalizedOperator) {
+      case "eq": {
+        return {
+          [field]: this.normalizeFieldValue(field, value),
+        } as Prisma.MntWoOperationWhereInput;
+      }
+      case "like": {
+        if (!STRING_FIELDS.has(field) || typeof value !== "string") {
+          throw this.invalidFilterDataException();
+        }
+        return {
+          [field]: { contains: value },
+        } as Prisma.MntWoOperationWhereInput;
+      }
+      case "gt": {
+        return {
+          [field]: { gt: this.normalizeFieldValue(field, value) },
+        } as Prisma.MntWoOperationWhereInput;
+      }
+      case "lt": {
+        return {
+          [field]: { lt: this.normalizeFieldValue(field, value) },
+        } as Prisma.MntWoOperationWhereInput;
+      }
+      case "in": {
+        if (!Array.isArray(value)) {
+          throw this.invalidFilterDataException();
+        }
+        return {
+          [field]: {
+            in: value.map((item) => this.normalizeFieldValue(field, item)),
+          },
+        } as Prisma.MntWoOperationWhereInput;
+      }
+      default:
+        throw this.invalidFilterDataException();
+    }
+  }
+
+  private normalizeFieldValue(
+    field: string,
+    value: unknown,
+  ): bigint | number | Date | string {
+    if (BIGINT_FIELDS.has(field)) {
+      if (typeof value === "bigint") return value;
+      if (
+        (typeof value === "number" && Number.isInteger(value)) ||
+        (typeof value === "string" && /^-?\d+$/.test(value.trim()))
+      ) {
+        return BigInt(value as number | string);
+      }
+      throw this.invalidFilterDataException();
+    }
+
+    if (NUMBER_FIELDS.has(field)) {
+      const parsed =
+        typeof value === "string" && value.trim() !== ""
+          ? Number(value)
+          : value;
+      if (typeof parsed === "number" && Number.isFinite(parsed)) {
+        return parsed;
+      }
+      throw this.invalidFilterDataException();
+    }
+
+    if (DATE_FIELDS.has(field)) {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value;
+      }
+      if (typeof value === "string" && isValidIsoDate(value)) {
+        return new Date(value);
+      }
+      throw this.invalidFilterDataException();
+    }
+
+    if (typeof value !== "string") {
+      throw this.invalidFilterDataException();
+    }
+
+    return value;
+  }
+
+  private invalidFilterDataException(): RpcException {
+    return new RpcException({
+      status: 400,
+      message: "Invalid filter data",
+    });
   }
 
   async update(
@@ -583,14 +890,13 @@ export class WoOperationsService {
             ? { operationType: dto.operationType }
             : {}),
           ...(dto.assetTreeId !== undefined
-            ? { assetTreeId: dto.assetTreeId !== null ? BigInt(dto.assetTreeId) : null }
+            ? {
+                assetTreeId:
+                  dto.assetTreeId !== null ? BigInt(dto.assetTreeId) : null,
+              }
             : {}),
-          ...(dto.unit !== undefined
-            ? { unit: dto.unit }
-            : {}),
-          ...(dto.subunit !== undefined
-            ? { subunit: dto.subunit }
-            : {}),
+          ...(dto.unit !== undefined ? { unit: dto.unit } : {}),
+          ...(dto.subunit !== undefined ? { subunit: dto.subunit } : {}),
           ...(dto.maintainableItem !== undefined
             ? { maintainableItem: dto.maintainableItem }
             : {}),
