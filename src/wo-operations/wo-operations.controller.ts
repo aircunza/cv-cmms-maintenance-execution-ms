@@ -1,17 +1,33 @@
 import { Controller } from "@nestjs/common";
 import { MessagePattern, Payload } from "@nestjs/microservices";
 import { WoOperationsService } from "./wo-operations.service";
+import { WoOperationsHumanResourcesPlainService } from "./wo-operations-human-resources-plain.service";
 import {
   CreateWoOperationDto,
   UpdateWoOperationDto,
   CancelWoOperationDto,
   FindAllWoOperationDto,
+  FindHumanResourcesPlainWoOperationDto,
   WoOperationCodeDto,
 } from "./dto";
 
 @Controller("wo-operations")
 export class WoOperationsController {
-  constructor(private readonly woOperationsService: WoOperationsService) {}
+  constructor(
+    private readonly woOperationsService: WoOperationsService,
+    private readonly humanResourcesPlainService: WoOperationsHumanResourcesPlainService,
+  ) {}
+
+  @MessagePattern("wo.operation.find.human-resources.plain")
+  findAllHumanResourcesPlain(
+    @Payload()
+    dto: FindHumanResourcesPlainWoOperationDto & {
+      organizationCodes: string[];
+      userPermissions: string[];
+    },
+  ) {
+    return this.humanResourcesPlainService.findAllHumanResourcesPlain(dto);
+  }
 
   @MessagePattern("wo.operation.create")
   create(

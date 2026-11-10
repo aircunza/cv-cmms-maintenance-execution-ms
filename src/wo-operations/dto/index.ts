@@ -4,3 +4,4 @@ export * from './update-wo-operation.dto';
 export * from './cancel-wo-operation.dto';
 export * from './find-all-wo-operation.dto';
 export * from './wo-operation-code.dto';
+export * from './find-human-resources-plain-wo-operation.dto';
