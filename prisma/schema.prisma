@@ -78,6 +78,7 @@ model MntAsset {
   workAreaDescription            String?   @map("work_area_description") @db.NVarChar(255)
   accountingAccountCode          String?   @map("accounting_account_code") @db.NVarChar(100)
   supervisorCode                 String?   @map("supervisor_code") @db.NVarChar(255)
+  supervisorName                 String?   @map("supervisor_name") @db.NVarChar(255)
   assetDependency                String?   @map("asset_dependency") @db.NVarChar(100)
   processTypeCode                String?   @map("process_type_code") @db.NVarChar(100)
   subprocessTypeCode             String?   @map("subprocess_type_code") @db.NVarChar(100)
